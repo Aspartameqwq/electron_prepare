@@ -1,0 +1,23 @@
+# ---- CCS 构建产物 ----
+Debug/
+Release/
+*.out
+*.obj
+*.map
+*.d
+*.o
+
+# ---- SysConfig 生成文件（禁提交，禁手改）----
+syscfg/
+ti_msp_dl_config.c
+ti_msp_dl_config.h
+
+# ---- 本机配置（不提交）----
+scripts/env.local.ps1
+
+# ---- 临时日志 / 原始工具链输出 ----
+logs/tmp/
+
+# ---- IDE / 本机特定 ----
+.settings/
+.vscode/

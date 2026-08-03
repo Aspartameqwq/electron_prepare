@@ -1,0 +1,43 @@
+# AGENTS.md — 所有 AI 工具统一规则
+
+本项目对所有 AI 工具（Claude Code、Codex、Cursor 等）的强制规则。**执行任何任务前必须先读本文件与 `PLAN.md`（冻结版 v7.1）。**
+
+## 总体
+
+- 遵循 `PLAN.md` 的分阶段执行与验收流程（阶段结果：COMPLETED / SOFTWARE_READY / BLOCKED / FAILED）。
+- 单次任务只允许：一个实施阶段 / 一个独立模块 / 一个明确 bug / 一组紧密相关测试 / 一项文档同步。
+- 目录按阶段创建，**不生成空壳 .c/.h**，不为匹配目录造占位文件。
+- 事实源：`control.syscfg`＝外设配置唯一机器事实源；`hardware_config.h`＝已确认物理参数唯一编译期来源；`project_config.h`＝软件策略参数唯一编译期来源。**UNKNOWN 参数不得以猜测值写入编译配置**（用各模块 `*_CONFIG_READY` 标志 + `#error`）。
+
+## Git 规则（强制）
+
+1. 开始前运行 `git status` 与 `git branch --show-current`。
+2. **main 分支上禁止直接修改**——先创建 `feat/<phase>` 分支。
+3. 未经用户明确要求，不 push、不 merge。
+4. 禁止 force-push main。
+5. 禁止提交本机绝对路径（如 `C:\Users\<用户名>`、盘符绝对路径、COM 口、机器名）。
+6. 禁止提交 `Debug/`、`Release/`、`*.out`、`*.obj`、`*.map` 等构建产物。
+7. 一个 commit 只解决一个明确问题。
+8. 提交前显示 `git diff --stat` 与关键 diff 摘要。
+9. **默认停在未提交状态并给出建议 commit message**；仅用户明确要求"提交"才创建 commit；push/PR 始终需明确授权。
+
+## 脏工作树保护
+
+- 若工作树存在**非本次任务创建**的未提交改动：立即停止写操作并向用户报告。
+- 禁止自动 `git reset`、`git checkout`（覆盖）、`git stash`、`git clean`、删除未跟踪文件。
+- 仅当用户明确要求保留并基于这些改动继续，或确认改动属于当前任务时，才允许继续。
+
+## 验证边界（重要）
+
+- Agent 只能声称：静态检查通过、host 测试通过、CCS 构建通过、烧录命令退出码为 0。
+- **只有用户提供证据**（串口日志 / 照片 / 视频摘要 / 明确口述 / 仪器结果）后，才能把模块标记为 `BOARD_TESTED`。
+- 禁止声称"上板验证通过、电机方向正确、舵机无抖动、OLED 正常、姿态达标"，除非用户返回相应结果。
+- 阶段结果与模块验证状态（SOURCE_ONLY / HOST_TESTED / BOARD_TESTED / INTEGRATED）是两个维度，不得混填。
+
+## 开发规则要点（详见 PLAN.md）
+
+- 安全：系统状态机 + `actuator_guard` 双电机独立通道；STBY 只在 RUNNING 拉高；换向 deadtime；紧急停止同步生效；电机/舵机独立供电。
+- 全工程唯一 `main()`；测试文件通过 `app/app_dispatch.c` 分发，不定义 `main()`。
+- 阻塞接口带 `_blocking` 后缀 + 有限超时；无后缀接口不得等待；ISR 内禁打印/等待/PI/OLED。
+- 公共头文件不暴露 SysConfig 生成宏；算法模块不 include MSPM0 SDK 头。
+- 第三方代码须记录来源/版本/许可证（见 `THIRD_PARTY_NOTICES.md` 约定，当前尚未创建）。
