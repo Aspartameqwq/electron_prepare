@@ -4,7 +4,7 @@
 >
 > **引用原则（必读）**：参考可借鉴、**不得照搬/直接移植**；按 `AGENTS.md` 的质量要求与 `PLAN.md` 的分层/接口重写；引用第三方实现须记录进 `THIRD_PARTY_NOTICES.md`。
 >
-> 本文件夹体积较大（约 61MB，板级 PDF 为主），**不纳入 git**，仅本索引 `INDEX.md` 入库；完整资料需在本地获取（嘉立创 wiki 可重新下载）。
+> 本文件夹**已纳入 git**（供协作者 review/移植）；解压工程内的 `Debug/`、`.clangd/`、`.theia/`、`.settings/` 等构建产物与 IDE 本机缓存由 `.gitignore` 排除。
 
 ---
 
@@ -124,10 +124,12 @@
 4. 引用外部实现须记录来源（`THIRD_PARTY_NOTICES.md`），不删除原版权头。
 5. 示例代码未必处理安全（STBY 默认、换向死区、超时、I2C_ERR_13 等）——以 `PLAN.md` 安全/协议规范为准，示例只提供协议/寄存器正确性。
 
+> **已评审例程**：`docs/example_reviews/README.md`（TB6612 / N20 编码器 / SG90 / OLED-SSD1306 / MPU6050 的"可取/不足/借鉴"逐份分析）。借鉴任何例程前先读对应评审文档。
+
 ---
 
 ## 七、使用提示
 
-- zip 需解压：`unzip TMX_MSPM0G3507_ModuleCode.zip`（或右键解压）。
+- zip 需解压：`unzip TMX_MSPM0G3507_ModuleCode.zip`（或右键解压）；本仓库已含解压后的 `TMX_MSPM0G3507_ModuleCode/TMX_MSPM0G3507_ProjectTemplate/` 工程（已排除构建产物）。
 - 路径含中文与`【】`，脚本中注意引号与编码。
-- 本文件夹不入 git（约 61MB）；需要入库请先移除非必要 PDF 或改用 Git LFS。
+- 本文件夹已入库（约 68MB）；若需瘦身：删除 `(1)` 重复文件、或仅保留模块移植代码并移除非必要官方 PDF。

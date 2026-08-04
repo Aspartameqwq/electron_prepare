@@ -22,6 +22,7 @@ logs/tmp/
 .settings/
 .vscode/
 
-# ---- 本地参考资料（大文件不入库，仅保留索引）----
-examples_and_documents/*
-!examples_and_documents/INDEX.md
+# ---- 参考资料：已入库（协作者 review/移植用），仅排除构建产物与 IDE 本机缓存 ----
+# Debug/ 已在上方规则覆盖（含子目录）；.settings/ 已在上方 IDE 规则覆盖
+.clangd/
+.theia/
