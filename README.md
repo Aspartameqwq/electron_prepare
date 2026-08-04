@@ -39,7 +39,7 @@
 
 ## 四、目录结构
 
-当前（P0 骨架，尚未实施）：
+当前（P0 完成，尚未实施模块）：
 
 ```
 2027-prepare/
@@ -48,6 +48,11 @@
 ├── AGENTS.md          # 所有 AI 工具统一强制规则
 ├── CLAUDE.md          # Claude Code 入口
 ├── .gitignore         # 排除构建产物/本机配置/临时日志
+├── docs/
+│   ├── TOOLCHAIN_LOCK.md      # 工具链版本锁定（脱敏）
+│   ├── HARDWARE_PROFILE.md    # 硬件参数档案（P0 基础 + 阶段字段 UNKNOWN）
+│   ├── HOST_TEST.md           # host 测试规范（clang C11 -Werror）
+│   └── ERRATA_CHECKLIST.md    # 芯片勘误清单（按阶段筛选）
 └── scripts/env.example.ps1
 ```
 
@@ -115,8 +120,13 @@ scripts/                build.ps1 · flash.ps1 · verify.ps1 · test_host.ps1
 | `AGENTS.md` | AI 工具强制规则：git、验证边界、脏工作树保护 | 每个 Agent 开工前 |
 | `CLAUDE.md` | Claude Code 入口 | Claude Code 会话 |
 | `README.md` | 本文件：项目中枢 | 所有人 |
+| `docs/TOOLCHAIN_LOCK.md` | 工具链版本锁定（脱敏） | 工具升级/排查 |
+| `docs/HARDWARE_PROFILE.md` | 硬件参数档案（分阶段补齐） | 各阶段进入前 |
+| `docs/HOST_TEST.md` | host 测试规范 | 纯算法模块测试 |
+| `docs/ERRATA_CHECKLIST.md` | 芯片勘误清单（按阶段筛选） | 各阶段开始 |
 
 ## 九、当前状态
 
-- **P0 骨架完成**（git 仓库已初始化于 `main`，文档就绪），**尚未实施任何模块**。
-- 待办：P0 收尾（`TOOLCHAIN_LOCK.md`、host 工具链确认、插板探测）→ P1 最小工程。
+- **P0 完成**（git 仓库 + 分支规范 + AGENTS/CLAUDE + env 分离 + TOOLCHAIN_LOCK + HARDWARE_PROFILE + host 规范 + 勘误清单），**尚未实施任何模块**。
+- 待办：**插上开发板** → 复跑 `detect_probe.py` 确认调试器 → 进入 P1 最小工程。
+- 当前分支：`feat/p00-toolchain`（P0 收尾工作，待合并 `main`）。
