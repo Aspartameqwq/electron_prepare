@@ -23,5 +23,5 @@ logs/tmp/
 .vscode/
 
 # ---- 本地参考资料（大文件不入库，仅保留索引）----
-参考例程及资料/*
-!参考例程及资料/INDEX.md
+examples_and_documents/*
+!examples_and_documents/INDEX.md

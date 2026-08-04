@@ -120,7 +120,7 @@ scripts/                build.ps1 · flash.ps1 · verify.ps1 · test_host.ps1
 | `AGENTS.md` | AI 工具强制规则：git、验证边界、脏工作树保护、代码质量要求 | 每个 Agent 开工前 |
 | `CLAUDE.md` | Claude Code 入口 | Claude Code 会话 |
 | `README.md` | 本文件：项目中枢 | 所有人 |
-| `参考例程及资料/INDEX.md` | 天猛星参考例程与资料索引（模块移植代码/板级资料/借鉴原则） | 需要参考例程/手册时 |
+| `examples_and_documents/INDEX.md` | 天猛星参考例程与资料索引（模块移植代码/板级资料/借鉴原则） | 需要参考例程/手册时 |
 | `docs/TOOLCHAIN_LOCK.md` | 工具链版本锁定（脱敏） | 工具升级/排查 |
 | `docs/HARDWARE_PROFILE.md` | 硬件参数档案（分阶段补齐） | 各阶段进入前 |
 | `docs/HOST_TEST.md` | host 测试规范 | 纯算法模块测试 |
