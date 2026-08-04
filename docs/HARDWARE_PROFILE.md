@@ -11,8 +11,15 @@
 | 芯片型号/封装 | MSPM0G3507, LQFP-64(PM) | MEASURED | |
 | CCS Theia | 20.5.1.00012 | MEASURED | 见 TOOLCHAIN_LOCK.md |
 | MSPM0 SDK | 2.10.00.04 | MEASURED | |
-| 调试器/探针 | UNKNOWN | UNKNOWN | **待插板上 `detect_probe.py` 确认** |
+| 调试器/探针 | **XDS110（主，用户持有）**；J-Link（备） | MEASURED | 官方文档确认天猛星**无板载调试器**；待插板 `detect_probe.py` 实测 |
 | 板载 LED | PB22 | DATASHEET | 天猛星板文档 |
+
+**调试与烧录方式（官方文档确认，2026-08-04）**：
+- 天猛星 **无板载 XDS110 / 无板载调试器**（板载 XDS110-ET 的是 TI 官方 LP-MSPM0G3507 LaunchPad，非天猛星）。
+- 板载 **CH340**（USB 转串口，TYPE-C）→ UART0 调试输出 + 串口 BSL 下载（备用，慢）。
+- 常规烧录/调试用**外部 SWD 探针**：本项目主用 **XDS110**（DSLite/CCS 支持），J-Link 备用。
+- **禁止 ST-LINK**（官方明确：会被锁芯片）。
+- SWD 引脚：PA19=SWDIO、PA20=SWCLK；需共 GND 并提供目标供电参考（VTref）。
 
 板上固定占用（见 PINMAP，禁挪用）：PA5/PA6=HFXT、PA19/PA20=SWD、PA10/PA11=UART0/CH340、PB22=LED。
 天猛星文档禁用引脚：PA02 / PA18 / PA21 / PA23。

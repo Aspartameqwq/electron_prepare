@@ -128,5 +128,6 @@ scripts/                build.ps1 · flash.ps1 · verify.ps1 · test_host.ps1
 ## 九、当前状态
 
 - **P0 完成**（git 仓库 + 分支规范 + AGENTS/CLAUDE + env 分离 + TOOLCHAIN_LOCK + HARDWARE_PROFILE + host 规范 + 勘误清单），**尚未实施任何模块**。
-- 待办：**插上开发板** → 复跑 `detect_probe.py` 确认调试器 → 进入 P1 最小工程。
+- 调试器决策（官方文档确认）：天猛星**无板载调试器**，主用外部 **XDS110**（SWD: PA19=SWDIO / PA20=SWCLK），禁 ST-LINK。
+- 待办：**插上 XDS110 + 开发板** → 复跑 `detect_probe.py` 确认 → 进入 P1 最小工程。
 - 当前分支：`feat/p00-toolchain`（P0 收尾工作，待合并 `main`）。
