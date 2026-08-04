@@ -121,6 +121,7 @@ scripts/                build.ps1 · flash.ps1 · verify.ps1 · test_host.ps1
 | `CLAUDE.md` | Claude Code 入口 | Claude Code 会话 |
 | `README.md` | 本文件：项目中枢 | 所有人 |
 | `examples_and_documents/INDEX.md` | 天猛星参考例程与资料索引（模块移植代码/板级资料/借鉴原则） | 需要参考例程/手册时 |
+| `docs/example_reviews/README.md` | 例程评审汇总 + 逐例程"可取/不足/借鉴"文档（TB6612/N20/SG90/OLED/MPU6050） | 借鉴某例程前 |
 | `docs/TOOLCHAIN_LOCK.md` | 工具链版本锁定（脱敏） | 工具升级/排查 |
 | `docs/HARDWARE_PROFILE.md` | 硬件参数档案（分阶段补齐） | 各阶段进入前 |
 | `docs/HOST_TEST.md` | host 测试规范 | 纯算法模块测试 |
