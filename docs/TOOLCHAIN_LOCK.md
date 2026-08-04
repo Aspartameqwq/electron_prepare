@@ -22,6 +22,12 @@
 - 烧录/调试前先确认探针：`DSLite identifyProbe` 或 skill 脚本 `detect_probe.py`。
 - 完整参数以 `DSLite help` 输出为准（原始输出存 `logs/tmp/toolchain/dslite_help.txt`）。**不得凭记忆使用未在本机确认的参数组合。**
 
+## 默认调试器
+
+- **默认调试器：XDS110**（天猛星无板载调试器，需外部 SWD 探针；用户持有 XDS110，J-Link 备用）。
+- 烧录后端：CCS/DSLite（targetConfigs `*.ccxml` 引用 XDS110）；`detect_probe.py` 实测确认后使用。
+- **禁止 ST-LINK**（官方明确：会锁芯片）。
+
 ## 更新与校验规则
 
 1. 任何工具升级后：更新本表 + 重新采集原始输出到 `logs/tmp/toolchain/`。

@@ -11,7 +11,7 @@
 | 芯片型号/封装 | MSPM0G3507, LQFP-64(PM) | MEASURED | |
 | CCS Theia | 20.5.1.00012 | MEASURED | 见 TOOLCHAIN_LOCK.md |
 | MSPM0 SDK | 2.10.00.04 | MEASURED | |
-| 调试器/探针 | **XDS110（主，用户持有）**；J-Link（备） | MEASURED | 官方文档确认天猛星**无板载调试器**；待插板 `detect_probe.py` 实测 |
+| 调试器/探针（**默认**） | **XDS110**（用户持有）；J-Link 备用 | MEASURED | 官方文档确认天猛星**无板载调试器**；待插板 `detect_probe.py` 实测 |
 | 板载 LED | PB22 | DATASHEET | 天猛星板文档 |
 
 **调试与烧录方式（官方文档确认，2026-08-04）**：
