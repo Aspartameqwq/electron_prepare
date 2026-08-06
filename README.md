@@ -11,7 +11,7 @@
 2. **格式规范、可复用**：统一接口命名、错误枚举、验证状态标注，模块可在电赛现场快速组装。
 3. **安全优先**：电机/舵机有硬性安全状态机（上电不转、换向死区、紧急停止同步生效、独立供电）。
 4. **个人 AI 辅助 + 协作者协作**：硬件逐步采购、逐步上板；GitHub 分支管理，证据绑定 commit，回滚清晰。
-5. **用 skill 规范开发**：`mspm0-ccs` skill 提供 SysConfig/引脚/烧录铁律，所有会话行为一致。
+5. **仓库规则规范开发**：`AGENTS.md` + `PLAN.md` 为规范来源；`mspm0-ccs` skill 仅为**可选辅助工具**。
 
 ## 二、技术栈与环境
 
@@ -21,7 +21,8 @@
 | IDE | CCS Theia 20.5.1 |
 | SDK | MSPM0 SDK 2.10.00.04 |
 | 驱动库 | TI DriverLib + SysConfig |
-| 规范层 | 全局 `mspm0-ccs` skill（描述匹配自动触发） |
+| 规范层 | 仓库内 `AGENTS.md` + `PLAN.md` |
+| 可选辅助 | `mspm0-ccs` skill（本机可选，不影响规则完整性） |
 | 本机路径 | 见 `scripts/env.example.ps1` → 复制为 `env.local.ps1`（已 gitignore） |
 
 ## 三、范围分层
@@ -39,7 +40,7 @@
 
 ## 四、目录结构
 
-当前（P0 进行中，尚未实施任何模块）：
+当前（P0 进行中；**尚未开始任何 CCS/板端实施阶段**；已有 `ring_buffer`、`frame_codec` 纯软件预研资产）：
 
 ```
 2027-prepare/

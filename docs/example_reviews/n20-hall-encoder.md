@@ -4,6 +4,21 @@
 **来源**：`examples_and_documents/立创·天猛星MSPM0G3507开发板【模块移植代码】/控制类/N20直流减速电机-带霍尔编码器/`
 **结构**：`BSP/src/bsp_motor_hallencoder.c` + `BSP/inc/bsp_motor_hallencoder.h`；`empty.c`；`empty.syscfg`
 **SDK**：mspm0_sdk@2.02.00.05 / SysConfig 1.21.0（旧）
+**归档**：`examples_and_documents/立创·天猛星MSPM0G3507开发板【模块移植代码】/控制类/N20直流减速电机-带霍尔编码器/TMX_MSPM0G3507_ModuleCode.zip`
+**ZIP SHA-256**：`90136370b2b8008c7c7a1e13c1fb2b59fcfd8070ebd96c45e138866f31d92862`
+**评审日期**：2026-08-04（对应 REFERENCE_MANIFEST `lckfb-tmx-n20-encoder`）
+
+## 证据表（findings）
+
+| finding_id | classification | correctness | source_file | symbol_or_config | confidence |
+|---|---|---|---|---|---|
+| F-N20-01 | SOURCE_FACT | REJECTED | bsp_motor_hallencoder.c | pwmb 分支误用 `ABS(pwma)` | HIGH |
+| F-N20-02 | SOURCE_FACT | REJECTED | bsp_motor_hallencoder.c | `else if` 丢失同时置位事件 | HIGH |
+| F-N20-03 | SOURCE_FACT | REJECTED | bsp_motor_hallencoder.c | 复制后清零与 ISR 竞争 | HIGH |
+| F-N20-04 | SOURCE_FACT | REJECTED | bsp_motor_hallencoder.c | 方向符号硬编码 | HIGH |
+| F-N20-05 | SOURCE_FACT | HARDWARE_REQUIRED | bsp_motor_hallencoder.c | `Motor_Stop` 设 compare=9999（语义依赖极性） | HIGH |
+| F-N20-06 | SOURCE_FACT | UNVERIFIED | empty.syscfg | 定时器中断 `DL_TIMER_IIDX_ZERO`（待对照本地 SDK） | MED |
+| F-N20-07 | SOURCE_FACT | REJECTED | bsp_motor_hallencoder.c | 双 PWM 通道 H 桥方案 | HIGH |
 
 ## 解码方式（v7.2 纠偏：参考例程是 X2，不是 X1）
 
@@ -21,7 +36,7 @@
 1. 判向思路：沿进中断后读另一相电平判方向——可借鉴，但本项目只用 A 相单沿（X1）。
 2. **分离累计值与消费值的思想**可参考（`Should`=ISR 累计，`Obtained`=周期快照）；**但其"复制后清零"实现不可采用**（与 ISR 竞争会丢计数）。本项目用**持续累计计数器 + 无符号回绕差值**（`position_mod`），**不清零 ISR 计数**。
 3. 中断清标志：`DL_GPIO_getEnabledInterruptStatus(...)` + `clearInterruptStatus`——标准做法。
-4. 定时器中断用 `DL_TIMER_IIDX_ZERO`——与 mspm0-ccs skill 已验证模式一致。
+4. 定时器中断用 `DL_TIMER_IIDX_ZERO`——**需对照本地 SDK 定时器示例核实**（当前 `UNVERIFIED`；外部 skill 仅辅助定位，不作为正确性证据）。
 
 ## 不足之处（弃用）
 
