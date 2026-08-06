@@ -1,27 +1,32 @@
-# REFERENCE_MANIFEST.yml — 参考资料来源清单（机器可核验）
-
-> 登记所有入库参考资料的来源、哈希、许可与评审状态。新增第三方文件前必须先在此登记并确认许可状态。
-> `source_url` 精确下载链接无法从离线资料确证时标 `UNKNOWN`，`redistribution_status` 不得猜测。
+# REFERENCE_MANIFEST.yml - 参考资料来源清单（机器可核验）
+#
+# 规则：
+#   - 新增第三方文件前必须先在此登记并确认许可状态。
+#   - 未知值一律用 null，不写占位字符串。
+#   - archive_path 为仓库内相对路径，archive_sha256 与 ZIP 对应。
+#   - 校验：python scripts/validate_reference_manifest.py
 
 version: 1
 updated: 2026-08-04
 
 references:
   - id: lckfb-tmx-tb6612
-    name: "TB6612电机驱动模块"
-    source_url: "https://wiki.lckfb.com/zh-hans/tmx-mspm0g3507/module/ (精确链接 UNKNOWN)"
+    name: "TB6612 电机驱动模块"
+    source_url: "https://wiki.lckfb.com/zh-hans/tmx-mspm0g3507/module/"   # 精确下载链接 null（离线资料无法确证）
     downloaded_at: 2026-08-04
+    archive_path: "examples_and_documents/立创·天猛星MSPM0G3507开发板【模块移植代码】/控制类/TB6612电机驱动模块/TMX_MSPM0G3507_ModuleCode.zip"
     archive_sha256: "d6c858ba918493df7054c55b6bec9b6ec7c59571d3a3311fba52d54631154f12"
     sdk_version: "mspm0_sdk@2.02.00.05"
     sysconfig_version: "1.21.0+3721"
-    license_status: REVIEW_REQUIRED        # 头注"官网全部开源"≠正式许可证
+    license_status: REVIEW_REQUIRED       # 头注"官网全部开源"不等于正式许可证
     redistribution_status: REVIEW_REQUIRED
     review_file: "docs/example_reviews/tb6612.md"
 
   - id: lckfb-tmx-n20-encoder
-    name: "N20直流减速电机-带霍尔编码器"
-    source_url: "https://wiki.lckfb.com/zh-hans/tmx-mspm0g3507/module/ (精确链接 UNKNOWN)"
+    name: "N20 直流减速电机-带霍尔编码器"
+    source_url: "https://wiki.lckfb.com/zh-hans/tmx-mspm0g3507/module/"
     downloaded_at: 2026-08-04
+    archive_path: "examples_and_documents/立创·天猛星MSPM0G3507开发板【模块移植代码】/控制类/N20直流减速电机-带霍尔编码器/TMX_MSPM0G3507_ModuleCode.zip"
     archive_sha256: "90136370b2b8008c7c7a1e13c1fb2b59fcfd8070ebd96c45e138866f31d92862"
     sdk_version: "mspm0_sdk@2.02.00.05"
     sysconfig_version: "1.21.0+3721"
@@ -30,9 +35,10 @@ references:
     review_file: "docs/example_reviews/n20-hall-encoder.md"
 
   - id: lckfb-tmx-sg90
-    name: "SG90舵机"
-    source_url: "https://wiki.lckfb.com/zh-hans/tmx-mspm0g3507/module/ (精确链接 UNKNOWN)"
+    name: "SG90 舵机"
+    source_url: "https://wiki.lckfb.com/zh-hans/tmx-mspm0g3507/module/"
     downloaded_at: 2026-08-04
+    archive_path: "examples_and_documents/立创·天猛星MSPM0G3507开发板【模块移植代码】/控制类/SG90舵机/TMX_MSPM0G3507_ModuleCode.zip"
     archive_sha256: "e0d533d89b111018d40fb5623d83705bc2c29e7b85fb6e2ab8289ed93f6104e9"
     sdk_version: "mspm0_sdk@2.02.00.05"
     sysconfig_version: "1.21.0+3721"
@@ -41,9 +47,10 @@ references:
     review_file: "docs/example_reviews/sg90.md"
 
   - id: lckfb-tmx-oled-ssd1306-iic
-    name: "0.96寸IIC单色屏 (SSD1306)"
-    source_url: "https://wiki.lckfb.com/zh-hans/tmx-mspm0g3507/module/ (精确链接 UNKNOWN)"
+    name: "0.96 寸 IIC 单色屏 (SSD1306)"
+    source_url: "https://wiki.lckfb.com/zh-hans/tmx-mspm0g3507/module/"
     downloaded_at: 2026-08-04
+    archive_path: "examples_and_documents/立创·天猛星MSPM0G3507开发板【模块移植代码】/显示类/0.96寸IIC单色屏/TMX_MSPM0G3507_ModuleCode.zip"
     archive_sha256: "dee574d97d9d8681c88d4f93459eecf2f25f7e56ea07c3a539069ed83eb3b426"
     sdk_version: "mspm0_sdk@2.02.00.05"
     sysconfig_version: "1.21.0+3721"
@@ -52,15 +59,16 @@ references:
     review_file: "docs/example_reviews/oled-ssd1306-iic.md"
 
   - id: lckfb-tmx-mpu6050
-    name: "MPU6050六轴传感器"
-    source_url: "https://wiki.lckfb.com/zh-hans/tmx-mspm0g3507/module/ (精确链接 UNKNOWN)"
+    name: "MPU6050 六轴传感器"
+    source_url: "https://wiki.lckfb.com/zh-hans/tmx-mspm0g3507/module/"
     downloaded_at: 2026-08-04
+    archive_path: "examples_and_documents/立创·天猛星MSPM0G3507开发板【模块移植代码】/传感器类/MPU6050六轴传感器/TMX_MSPM0G3507_ModuleCode.zip"
     archive_sha256: "4cb64a452d4c1aa7e134965e913bf3495421d2dea2c3afb409baa36fb0f4b2d9"
     sdk_version: "mspm0_sdk@2.02.00.05"
     sysconfig_version: "1.21.0+3721"
-    license_status: LICENSE_MISSING        # inv_mpu.c 声明 See included License.txt，但 ZIP 内无此文件
+    license_status: LICENSE_MISSING       # inv_mpu.c 声明 See included License.txt，ZIP 内无此文件
     redistribution_status: REVIEW_REQUIRED
     review_file: "docs/example_reviews/mpu6050.md"
 
-  # 注：其余 63 个模块按阶段需要时再登记 + 即时评审（见 PLAN 借鉴流程），不一次性全部分析。
-  # TI LaunchPad 例程（外部 D:\...\mspm0-modules-main）仅作 API 参考，不入库，也不在本清单登记为可再分发资源。
+# 注：其余 63 个模块按阶段需要时再登记 + 即时评审，不一次性全部分析。
+# TI LaunchPad 例程（逻辑来源 ref-ti-launchpad-mspm0-modules）仅作 API 参考、不入库，不在此登记为可再分发资源。

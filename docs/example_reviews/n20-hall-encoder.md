@@ -19,7 +19,7 @@
 ## 可取之处（借鉴）
 
 1. 判向思路：沿进中断后读另一相电平判方向——可借鉴，但本项目只用 A 相单沿（X1）。
-2. 快照计数模式：`Should_Get_Encoder_Count`（ISR 累计）+ `Obtained_Get_Encoder_Count`（定时器周期快照）——避免主循环直接竞争；本项目可借鉴其"快照"思想，但改为单调模计数 `position_mod` + 20ms 取差（不逐周期清零）。
+2. **分离累计值与消费值的思想**可参考（`Should`=ISR 累计，`Obtained`=周期快照）；**但其"复制后清零"实现不可采用**（与 ISR 竞争会丢计数）。本项目用**持续累计计数器 + 无符号回绕差值**（`position_mod`），**不清零 ISR 计数**。
 3. 中断清标志：`DL_GPIO_getEnabledInterruptStatus(...)` + `clearInterruptStatus`——标准做法。
 4. 定时器中断用 `DL_TIMER_IIDX_ZERO`——与 mspm0-ccs skill 已验证模式一致。
 
@@ -38,6 +38,4 @@
 - 判向逻辑可参考，但重写为 `drivers/encoder_gpio`：单调模计数、`gpio_irq_dispatch.c` 集中分发（不自定义 IRQHandler）、X1 单沿。
 - 编码器接线引脚查该例程 `empty.syscfg`（板级正确性参考），以本项目 `control.syscfg` + P1A 结果为准。
 
-## TI 库铁律
-
-TI DriverLib 与生成文件（`ti_msp_dl_config.*`）**绝不允许修改**。编码器中断由本项目 `bsp/interrupts.c` 读取/清除硬件状态后分发给 `encoder_on_gpio_irq()`。
+**TI 文件规则**：`source/ti/driverlib/`＝供应商源码，**不修改**；`ti_msp_dl_config.c/h`＝SysConfig 生成产物，**不手工编辑**（改 `.syscfg` 后重新生成）；`DL_*`＝API 名称，不是文件。编码器中断由本项目 `bsp/interrupts.c` 读取/清除硬件状态后分发给 `encoder_on_gpio_irq()`。

@@ -1,10 +1,10 @@
 # AGENTS.md — 所有 AI 工具统一规则
 
-本项目对所有 AI 工具（Claude Code、Codex、Cursor 等）的强制规则。**执行任何任务前必须先读本文件与 `PLAN.md`（冻结版 v7.1）。**
+本项目对所有 AI 工具（Claude Code、Codex、Cursor 等）的强制规则。**执行任何任务前必须先读本文件与 `PLAN.md`（v7.2 纠偏补丁）。**
 
 ## 总体
 
-- 遵循 `PLAN.md` 的分阶段执行与验收流程（阶段结果：COMPLETED / SOFTWARE_READY / BLOCKED / FAILED）。
+- 遵循 `PLAN.md` 的分阶段执行与验收流程（阶段结果：`NOT_STARTED / IN_PROGRESS / COMPLETED / SOFTWARE_READY / BLOCKED / FAILED`）。
 - 单次任务只允许：一个实施阶段 / 一个独立模块 / 一个明确 bug / 一组紧密相关测试 / 一项文档同步。
 - 目录按阶段创建，**不生成空壳 .c/.h**，不为匹配目录造占位文件。
 - 事实源：`control.syscfg`＝外设配置唯一机器事实源；`hardware_config.h`＝已确认物理参数唯一编译期来源；`project_config.h`＝软件策略参数唯一编译期来源。**UNKNOWN 参数不得以猜测值写入编译配置**（用各模块 `*_CONFIG_READY` 标志 + `#error`）。

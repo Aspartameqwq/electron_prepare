@@ -2,7 +2,7 @@
 
 对 `examples_and_documents/立创·天猛星MSPM0G3507开发板【模块移植代码】` 中**与本项目阶段直接相关**的例程逐份评审。
 
-> **铁律（贯穿所有评审）**：**TI 官方 MSPM0 基础底层库（DriverLib：`source/ti/driverlib/`、`ti_msp_dl_config.h/c`、`DL_*` API）绝不允许更改**。例程一律通过 SysConfig + 生成宏使用；所有自定义适配放在我们的 `bsp/`/`drivers/` 层。评审只做借鉴分析，不产生对官方库的任何修改。
+> **TI 文件规则（统一措辞）**：`source/ti/driverlib/`＝供应商源码，**不修改**；`ti_msp_dl_config.c/h`＝SysConfig 生成产物，**不手工编辑**（改 `.syscfg` 后重新生成）；`DL_*`＝API 名称，不是文件。本项目适配写在自有 `bsp/` / `drivers/` 层。评审只做借鉴分析，不产生对官方库的任何修改。
 
 ## 证据分类（v7.2 起，各评审必须区分）
 

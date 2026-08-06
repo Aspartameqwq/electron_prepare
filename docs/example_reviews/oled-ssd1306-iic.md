@@ -23,6 +23,7 @@
 4. **无边界检查**：`OLED_GRAM[144][8]` 与坐标未统一校验。
 5. **地址硬编码 0x3C**：0x3D 需改代码。
 6. **无超时轮询**：`while (!(IDLE))` 死等 → 本项目 `i2c_*_blocking` 需有限超时 + `recovery_pending`。
+7. **末笔事务未显式等待完成**：`OLED_WR_Byte` 启动 I2C 事务后立即返回，刷新最后一笔是否发完未确认。
 
 ## 可取之处（借鉴）
 
@@ -32,9 +33,8 @@
 ## 借鉴建议（应用到本项目）
 
 - **仅借鉴 SSD1306 命令、显存布局、字库**；**不借鉴其传输实现**。
-- 重写为 `drivers/ssd1306`：`init / show 原语 / service（分块刷新状态机，维护 current_page/column/dirty_pages）`；传输走本项目 `i2c_write_read_blocking`（超时 + `recovery_pending` + I2C_ERR_13 workaround）。
+- 重写为 `drivers/ssd1306`：`init / show 原语 / service（分块刷新状态机，维护 current_page/column/dirty_pages）`。OLED 命令与显示数据为**纯写**，用 `i2c_write_blocking`（超时 + `recovery_pending` + I2C_ERR_13 workaround）；**MPU6050 寄存器读取**才用 `i2c_write_read_blocking`。
+- **许可未确认前不得直接复制字库数组**；SSD1306 命令与地址模式按**芯片数据手册**重新实现（非直接照搬例程）。
 - bus 优先级：MPU6050 10ms 采样优先，OLED 之后执行；时间不足跳过本次分块。
 
-## TI 库铁律
-
-TI DriverLib 与生成文件**绝不允许修改**；`i2c_bus.c` 保留本地 SDK 2.10 i2c controller 例子的 `I2C_ERR_13` workaround（start 后 delay_cycles 再轮 BUSY），禁删除。
+**TI 文件规则**：`source/ti/driverlib/`＝供应商源码，**不修改**；`ti_msp_dl_config.c/h`＝SysConfig 生成产物，**不手工编辑**（改 `.syscfg` 后重新生成）；`DL_*`＝API 名称，不是文件。`i2c_bus.c` 保留本地 SDK 2.10 i2c controller 例子的 `I2C_ERR_13` workaround（start 后 delay_cycles 再轮 BUSY），禁删除。

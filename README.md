@@ -122,7 +122,7 @@ scripts/                build.ps1 · flash.ps1 · verify.ps1 · test_host.ps1
 
 | 文件 | 内容 | 何时看 |
 |---|---|---|
-| `PLAN.md` | 完整规范 v7.1：资源规划、安全状态机、协议、阶段验收、验证矩阵 | 一切开发 |
+| `PLAN.md` | 完整规范 v7.2：资源规划、安全状态机、协议、阶段验收、验证矩阵 | 一切开发 |
 | `AGENTS.md` | AI 工具强制规则：git、验证边界、脏工作树保护、代码质量要求 | 每个 Agent 开工前 |
 | `CLAUDE.md` | Claude Code 入口 | Claude Code 会话 |
 | `README.md` | 本文件：项目中枢 | 所有人 |
