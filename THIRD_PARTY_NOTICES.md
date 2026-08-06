@@ -1,6 +1,8 @@
-# THIRD_PARTY_NOTICES.md — 第三方声明
+# THIRD_PARTY_NOTICES.md — 第三方声明（来源登记，部分待解析）
 
-> 本文件记录所有第三方软件/文档成分。**精确来源 + 固定归属格式**；详细分层审计见 `docs/LICENSING_AUDIT.md`，来源哈希见 `docs/reference/REFERENCE_MANIFEST.yml`。
+> 本文件记录所有第三方软件/文档成分。**精确来源**目前为**部分待解析**（文档编号/revision 待逐份核对）；详细分层审计见 `docs/LICENSING_AUDIT.md`，来源哈希见 `docs/reference/REFERENCE_MANIFEST.yml`。
+>
+> **两个状态分开**：`source_authenticity`（来源是否真实官方）与 `repository_redistribution_status`（本仓库是否允许再分发托管）。**"官方能提供下载" ≠ "允许第三方在任意仓库再分发"**；未确认前一律 `REDISTRIBUTION_REVIEW_REQUIRED`。
 
 ## 固定归属格式
 
@@ -28,11 +30,11 @@ TI 内容：
 
 ### 3. TI 文档与 SDK
 
-| 成分 | 精确编号/版本 | 内容类型 | 状态 |
-|---|---|---|---|
-| MSPM0G350x 数据手册 | slasex6*（以仓库内 PDF 为准） | 数据手册 PDF | 官方分发 |
-| MSPM0G350x 用户手册 / MSPM0G 系列硬件手册 | 见仓库内 PDF 编号 | PDF | 官方分发 |
-| MSPM0 SDK 2.10.00.04 | 许可文件 `license_mspm0_sdk_2_10_00_04.txt`（SDK 根目录） | 软件 + 许可 | 官方分发（**不并入仓库**） |
+| 成分 | 精确编号/revision | 内容类型 | source_authenticity | repository_redistribution_status |
+|---|---|---|---|---|
+| MSPM0G350x 数据手册 | **待核对**（文件名见仓库，SHA-256 见 REFERENCE_MANIFEST；不写通配符） | 数据手册 PDF | 官方来源（真实性高） | `REDISTRIBUTION_REVIEW_REQUIRED` |
+| MSPM0G350x 用户手册 / MSPM0G 系列硬件手册 | **待核对**（同上） | PDF | 官方来源（真实性高） | `REDISTRIBUTION_REVIEW_REQUIRED` |
+| MSPM0 SDK 2.10.00.04 | 许可文件 `${MSPM0_SDK_ROOT}/license_mspm0_sdk_2_10_00_04.txt` | 软件 + 许可 | 官方来源 | `REDISTRIBUTION_REVIEW_REQUIRED`（**未并入仓库**） |
 
 ### 4. InvenSense DMP（嵌套第三方）
 

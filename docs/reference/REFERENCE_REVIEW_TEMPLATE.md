@@ -26,13 +26,15 @@
 
 ## 正确性状态（correctness — 这条结论可不可用）
 
-| 状态 | 含义 |
-|---|---|
-| `UNVERIFIED` | 尚未验证正确性 |
-| `SPEC_VERIFIED` | 与芯片数据手册 / 官方规范核对一致 |
-| `HARDWARE_REQUIRED` | 需上板 / 仪器确认 |
-| `REJECTED` | 判定为缺陷，弃用 |
-| `PROJECT_DECISION` | 本项目选定的方案（非例程评价） |
+| 状态 | 含义 | 门槛 |
+|---|---|---|
+| `UNVERIFIED` | 尚未验证正确性 | — |
+| `SPEC_VERIFIED` | 与规范核对一致 | **必须给出**：规范名称 + 文档 revision + 章节/表格/寄存器编号 + 核对日期；**不得只写"与数据手册一致"** |
+| `HARDWARE_REQUIRED` | 需上板 / 仪器确认 | 未确认前禁止采信 |
+| `REJECTED` | 判定为缺陷，弃用 | — |
+| `PROJECT_DECISION` | 本项目选定的方案（非例程评价） | — |
+
+> **命名统一**：全项目只用 `HARDWARE_REQUIRED`（不再用 `HARDWARE_CONFIRMATION_REQUIRED`）；"频率未算"等推导类一律写 `classification=CALCULATED, correctness=UNVERIFIED`，**不使用自定义词 `CALCULATION_UNVERIFIED`**。
 
 ## 证据表
 

@@ -23,7 +23,7 @@
 ### 2. TI SDK / 生成文件
 
 - **content_owner**：Texas Instruments
-- **usage_terms**：随 MSPM0 SDK 分发的许可文件 → **`F:\TI\mspm0_sdk_2_10_00_04\license_mspm0_sdk_2_10_00_04.txt`**（不在仓库内，仅记录路径与文件名；不要用"BSD 风格"这类非精确描述）
+- **usage_terms**：随 MSPM0 SDK 分发的许可文件 → **`${MSPM0_SDK_ROOT}/license_mspm0_sdk_2_10_00_04.txt`**（`MSPM0_SDK_ROOT` 由本机 `scripts/env.local.ps1` 解析，仓库不存绝对路径）；SHA-256=`1847ebef85c8c2ff6d9f690e7e2f37aada2f9b2afb311b02055d08179336d3a5`（2026-08-04 核对）。不要用"BSD 风格"这类非精确描述
 - **attribution_required**：遵循该许可文件要求
 - **nested_third_party**：无
 - **nested_license_status**：—（随 SDK 官方分发）
@@ -62,3 +62,17 @@
 - InvenSense `License.txt` 找回。
 - OLED 字库数组来源与许可确认。
 - 是否拆仓：主仓库只存目标代码/计划/评审/来源清单，参考资料独立仓库。
+
+## 五、当前公开托管风险（unresolved，所有者须决策）
+
+**背景**：本仓库为 GitHub 私有仓库（协作者可见），第三方参考（LCKFB 68 模块、板级 PDF、InvenSense DMP）已提交并托管于仓库内。
+**注意**："未来禁止复制进 `firmware/`" 与 "当前已公开托管" 是**两个问题**，现状（未决策）必须视为 **unresolved risk**：
+
+| 选项 | 说明 | 状态 |
+|---|---|---|
+| 保持公开 + 补齐许可 | 逐项确认许可、登记精确来源 | 待所有者决策 |
+| 高风险资料迁移私有仓库 | 拆仓 / 移出 `examples_and_documents` 高危项 | 待所有者决策 |
+| 删除当前分支高风险文件 | 从工作树移除（须评估协作者影响） | 待所有者决策 |
+| 清理历史 | 重写 Git 历史（风险高，谨慎） | 待所有者决策 |
+
+**Agent 约束**：不删除参考文件、不重写历史；仅在审计文档中如实标注暴露状态为 unresolved。
