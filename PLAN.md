@@ -1,10 +1,10 @@
-# MSPM0G3507 电赛控制类模块库实施计划（v7.1，冻结版）
+# MSPM0G3507 电赛控制类模块库实施计划（v7.2，纠偏补丁）
 
-> 本版整合全部七轮评审意见。建议此后不再通过无限迭代计划文本来代替实施；真实问题通过代码审查、硬件日志与 ADR 修正。
+> v7.2 为纠偏补丁（**不改功能范围**）：① 阶段状态增加 `NOT_STARTED / IN_PROGRESS`，当前如实标注 P0=IN_PROGRESS、P1~P3=NOT_STARTED（`ring_buffer`/`frame_codec` 仅为提前完成的纯软件预研资产，**非阶段完成**）；② I2C 恢复语义改为"超时即返回错误 + `recovery_pending`，控制器恢复由低优先级 service/SAFE 完成，不计入原事务 API"；③ `mspm0-ccs` skill 降为**可选自动化辅助**，强制规则以仓库内 `AGENTS.md`/`PLAN.md` 为准。真实问题通过代码审查、硬件日志与 ADR 修正。
 
 ## Context（目标 + 开发方式约束）
 
-为 2027 电赛控制类题目，在**天猛星 MSPM0G3507** 上用 CCS 实现控制类模块库：电机+编码器+速度PI、舵机、串口帧协议、OLED+MPU6050。`mspm0-ccs` skill 为开发规范层（已装、全局可用、描述匹配自动触发）。
+为 2027 电赛控制类题目，在**天猛星 MSPM0G3507** 上用 CCS 实现控制类模块库：电机+编码器+速度PI、舵机、串口帧协议、OLED+MPU6050。`mspm0-ccs` skill 为**可选自动化辅助**（已装、全局可用、描述匹配自动触发）；**所有强制规则以本仓库 `AGENTS.md` 与 `PLAN.md` 为准，不依赖协作者机器上的全局 skill**。
 
 **开发方式**：大学生独自用 AI 工具开发，硬件逐步采购、逐步上板验证，GitHub 分支管理。因此：核心模块库与可选扩展分层、硬件参数按阶段局部门禁、验收分"基础必做/有仪器选做"、允许 `SOFTWARE_READY`（软件完成、硬件待验）。
 
@@ -367,7 +367,7 @@ i2c_status_t i2c_read_blocking(..., uint32_t timeout_ms);
 i2c_status_t i2c_write_read_blocking(..., uint32_t timeout_ms);
 ```
 只允许主循环调用、ISR 禁调、总线一次一个事务、无需 I2C IRQHandler。
-- **阻塞硬上限**：`I2C_TRANSACTION_TIMEOUT_MS < 控制任务迟到阈值`；单次事务超时→尝试 STOP→复位并重初始化控制器→**本次调用立即返回错误（不同一次调用内重试事务）**，由设备任务下一调度周期决定是否重试；`I2C_CONTROLLER_RECOVERY_ATTEMPTS_PER_FAILURE=1`（一次失败最多一次控制器恢复，恢复后本次 API 仍返回错误，不在同一次 `_blocking()` 重发原事务）；恢复中每个等待有独立上限；OLED 失败直接跳过当前分块不在本周期重试；MPU6050 失败返回错误由下次 10ms 任务再读。P8 记录实测最坏事务时间。
+- **阻塞硬上限 + 恢复语义（v7.2 修正）**：`I2C_TRANSACTION_TIMEOUT_MS < 控制任务迟到阈值`；单次事务超时→**立即返回错误并置 `recovery_pending`**（**不在同一次 `_blocking()` 内**做控制器复位/重初始化/重试事务）；控制相关模式先按故障分级安全停止；控制器恢复由**后续低优先级 service 或 SAFE 状态**完成，恢复时间**不计入原事务 API**；`I2C_CONTROLLER_RECOVERY_ATTEMPTS_PER_FAILURE=1`；恢复中每个等待有独立上限；OLED 失败直接跳过当前分块不在本周期重试；MPU6050 失败返回错误由下次 10ms 任务再读。P8 记录实测最坏事务时间。
 - 错误枚举：`I2C_OK / I2C_ERR_TIMEOUT / I2C_ERR_NACK / I2C_ERR_BUS_STUCK / I2C_ERR_INVALID_ARG / I2C_ERR_BUSY`。
 - 只探测 7 位地址 SSD1306=0x3C/0x3D、MPU6050=0x68/0x69；全程 7 位记法。
 - **I2C 电平检查（P8 进入条件）**：查明模块供电与 SDA/SCL 上拉所接电源；未接 MSPM0 时测 SDA/SCL 空闲电压须在 3.3V 逻辑范围；不确认优先 3.3V 供电；**禁仅因标注"支持 5V"假定信号 3.3V**。HARDWARE_PROFILE 增 `i2c_module_supply_V / i2c_sda_idle_V / i2c_scl_idle_V / i2c_pullup_rail`。
@@ -386,7 +386,7 @@ i2c_status_t i2c_write_read_blocking(..., uint32_t timeout_ms);
 
 ## 十二、核心实施阶段（P0~P10）
 
-**阶段结果**：`COMPLETED`＝软件+上板验收完成；`SOFTWARE_READY`＝源码+host+构建完成等待硬件（可进不依赖该硬件输出的软件工作，不得进依赖其真实输出的闭环阶段）；`BLOCKED`＝缺硬件/参数/引脚/工具，只阻塞直接依赖阶段；`FAILED`＝现有条件下未通过，先修复。
+**阶段结果（v7.2 增补）**：`NOT_STARTED`＝未开始；`IN_PROGRESS`＝进行中；`COMPLETED`＝软件+上板验收完成；`SOFTWARE_READY`＝源码+host+构建完成等待硬件（可进不依赖该硬件输出的软件工作，不得进依赖其真实输出的闭环阶段）；`BLOCKED`＝缺硬件/参数/引脚/工具，只阻塞直接依赖阶段；`FAILED`＝现有条件下未通过，先修复。**当前如实状态：P0=IN_PROGRESS，P1/P1A/P2/P3=NOT_STARTED（`ring_buffer`/`frame_codec` 仅为预研资产，release_gate=NOT_MET，见 `docs/STATUS.md`）。**
 
 | 阶段 | 内容 | 关键验收（基础必做 / 有仪器选做） |
 |---|---|---|

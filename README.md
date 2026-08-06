@@ -39,11 +39,11 @@
 
 ## 四、目录结构
 
-当前（P0 完成，尚未实施模块）：
+当前（P0 进行中，尚未实施任何模块）：
 
 ```
 2027-prepare/
-├── PLAN.md            # 冻结版实施计划 v7.1（完整规范：安全/协议/验收）
+├── PLAN.md            # 实施计划 v7.2（纠偏补丁；完整规范：安全/协议/验收）
 ├── README.md          # 本文件（项目中枢）
 ├── AGENTS.md          # 所有 AI 工具统一强制规则
 ├── CLAUDE.md          # Claude Code 入口
@@ -52,8 +52,14 @@
 │   ├── TOOLCHAIN_LOCK.md      # 工具链版本锁定（脱敏）
 │   ├── HARDWARE_PROFILE.md    # 硬件参数档案（P0 基础 + 阶段字段 UNKNOWN）
 │   ├── HOST_TEST.md           # host 测试规范（clang C11 -Werror）
-│   └── ERRATA_CHECKLIST.md    # 芯片勘误清单（按阶段筛选）
-└── scripts/env.example.ps1
+│   ├── ERRATA_CHECKLIST.md    # 芯片勘误清单（按阶段筛选）
+│   ├── STATUS.md              # 阶段结果 + 模块验证状态（如实）
+│   ├── example_reviews/       # 例程评审（可取/不足/借鉴）
+│   └── reference/             # 参考来源清单 + 许可审计
+├── firmware/          # 仅含预研纯算法文件（config/middleware），尚未形成可编译 CCS 工程
+├── tests/host/        # ring/frame_codec host 测试（预研资产）
+├── scripts/           # env.example.ps1 · test_host.ps1
+└── examples_and_documents/    # 参考例程与资料库（已入库；构建产物/缓存已排除）
 ```
 
 计划目标形态（按阶段逐步创建，不生成空壳）：
@@ -72,7 +78,7 @@ scripts/                build.ps1 · flash.ps1 · verify.ps1 · test_host.ps1
 
 ## 五、开发流程（阶段计划）
 
-**阶段结果**：`COMPLETED`（软硬件均过）· `SOFTWARE_READY`（软件完成等硬件）· `BLOCKED`（缺资源，只阻塞依赖阶段）· `FAILED`（先修复）。
+**阶段结果**：`NOT_STARTED`（未开始）· `IN_PROGRESS`（进行中）· `COMPLETED`（软硬件均过）· `SOFTWARE_READY`（软件完成等硬件）· `BLOCKED`（缺资源，只阻塞依赖阶段）· `FAILED`（先修复）。
 
 | 阶段 | 内容 | 依赖 |
 |---|---|---|
@@ -127,10 +133,10 @@ scripts/                build.ps1 · flash.ps1 · verify.ps1 · test_host.ps1
 | `docs/HOST_TEST.md` | host 测试规范 | 纯算法模块测试 |
 | `docs/ERRATA_CHECKLIST.md` | 芯片勘误清单（按阶段筛选） | 各阶段开始 |
 
-## 九、当前状态
+## 九、当前状态（如实）
 
-- **P0 完成**（git 仓库 + 分支规范 + AGENTS/CLAUDE + env 分离 + TOOLCHAIN_LOCK + HARDWARE_PROFILE + host 规范 + 勘误清单 + 默认调试器 XDS110）。
-- **P3-SOFTWARE（通信核心纯算法）完成 host 验证**：`ring_buffer`（SPSC）+ `frame_codec`（帧协议 v1，CRC-16/CCITT-FALSE），`scripts/test_host.ps1` 全过（含 CRC 向量 `0x78DA`、1 万随机往返、10 万字节模糊）→ **HOST_TESTED**。
+- **P0：IN_PROGRESS**——工具链锁定 / 硬件档案 / host 规范 / 勘误 / 默认调试器 XDS110 已就绪；剩余 `detect_probe`（需板子）与真实分支 + PR + CI 流程。
+- **P1 / P1A / P2 / P3：NOT_STARTED**——尚无 CCS 最小工程、`control.syscfg`、scheduler、`uart1_transport`；**无任何板端测试 / 上板证据**。
+- **纯软件预研资产（非阶段完成）**：`ring_buffer` + `frame_codec` 已通过 host 测试（`HOST_TESTED`，CRC 向量 `0x78DA` 等），但 `release_gate = NOT_MET`，已知缺口（时间戳回绕 / Sanitizer / 目标端并发语义 / 边界校验 / transport 集成）见 `docs/STATUS.md`。**这不等同于 P3 完成。**
 - 调试器决策（官方文档确认）：天猛星**无板载调试器**，**默认调试器 = 外部 XDS110**（SWD: PA19=SWDIO / PA20=SWCLK），J-Link 备用；禁 ST-LINK。
-- 待办：插上 XDS110 + 开发板 → `detect_probe.py` 确认 → P1 最小工程；P3 上板（UART1 回环）待硬件。
-- 模块验证状态见 `docs/STATUS.md`。
+- 目录"当前/计划"区分见第四节；`firmware/` 目前仅含预研纯算法文件，尚未形成可编译工程。

@@ -119,7 +119,7 @@
 ## 六、借鉴原则（重要）
 
 1. **天猛星例程（本文件夹）**：板级引脚、接线、`*.syscfg` 与我们的板**一致**，可直接对照 → 用作"板级正确性"参考。
-2. **TI LaunchPad 例程**（`D:\CodeStudy\school\electron\2026\mspm0-modules-main`，外部）：DriverLib API 用法可参考；**引脚为 LaunchPad 布局，与天猛星不同，不得照搬**。
+2. **TI LaunchPad 例程**（逻辑来源：`ref-ti-launchpad-mspm0-modules`，**本机外部目录、不入库**，本机路径见仓库外配置）：DriverLib API 用法可参考；**引脚为 LaunchPad 布局，与天猛星不同，不得照搬**。
 3. **一律重写**：按 `PLAN.md` 的分层（bsp/drivers/middleware/control/…）、接口规范、安全/验证要求重新实现；**禁止复制文件结构、整段代码、第三方 DMP 栈等**。
 4. 引用外部实现须记录来源（`THIRD_PARTY_NOTICES.md`），不删除原版权头。
 5. 示例代码未必处理安全（STBY 默认、换向死区、超时、I2C_ERR_13 等）——以 `PLAN.md` 安全/协议规范为准，示例只提供协议/寄存器正确性。

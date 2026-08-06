@@ -28,5 +28,5 @@
 
 ## 执行入口
 
-- `scripts/test_host.ps1`：P3 建立首个 host 测试时创建。当前 P0 仅完成工具链确认。
+- `scripts/test_host.ps1`：**已建立**，ring_buffer / frame_codec host 测试已通过（预研资产，`HOST_TESTED`）。注意 `release_gate = NOT_MET`，已知缺口（时间戳回绕、Sanitizer、空指针/超时校验、`*out_len` 清零、目标端并发）见 `docs/STATUS.md`。
 - 可选：P3 host 测试稳定后加 `.github/workflows/host-tests.yml`（只跑纯算法，不构建 CCS/不烧录）。

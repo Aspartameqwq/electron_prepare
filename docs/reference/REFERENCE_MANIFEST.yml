@@ -1,0 +1,66 @@
+# REFERENCE_MANIFEST.yml — 参考资料来源清单（机器可核验）
+
+> 登记所有入库参考资料的来源、哈希、许可与评审状态。新增第三方文件前必须先在此登记并确认许可状态。
+> `source_url` 精确下载链接无法从离线资料确证时标 `UNKNOWN`，`redistribution_status` 不得猜测。
+
+version: 1
+updated: 2026-08-04
+
+references:
+  - id: lckfb-tmx-tb6612
+    name: "TB6612电机驱动模块"
+    source_url: "https://wiki.lckfb.com/zh-hans/tmx-mspm0g3507/module/ (精确链接 UNKNOWN)"
+    downloaded_at: 2026-08-04
+    archive_sha256: "d6c858ba918493df7054c55b6bec9b6ec7c59571d3a3311fba52d54631154f12"
+    sdk_version: "mspm0_sdk@2.02.00.05"
+    sysconfig_version: "1.21.0+3721"
+    license_status: REVIEW_REQUIRED        # 头注"官网全部开源"≠正式许可证
+    redistribution_status: REVIEW_REQUIRED
+    review_file: "docs/example_reviews/tb6612.md"
+
+  - id: lckfb-tmx-n20-encoder
+    name: "N20直流减速电机-带霍尔编码器"
+    source_url: "https://wiki.lckfb.com/zh-hans/tmx-mspm0g3507/module/ (精确链接 UNKNOWN)"
+    downloaded_at: 2026-08-04
+    archive_sha256: "90136370b2b8008c7c7a1e13c1fb2b59fcfd8070ebd96c45e138866f31d92862"
+    sdk_version: "mspm0_sdk@2.02.00.05"
+    sysconfig_version: "1.21.0+3721"
+    license_status: REVIEW_REQUIRED
+    redistribution_status: REVIEW_REQUIRED
+    review_file: "docs/example_reviews/n20-hall-encoder.md"
+
+  - id: lckfb-tmx-sg90
+    name: "SG90舵机"
+    source_url: "https://wiki.lckfb.com/zh-hans/tmx-mspm0g3507/module/ (精确链接 UNKNOWN)"
+    downloaded_at: 2026-08-04
+    archive_sha256: "e0d533d89b111018d40fb5623d83705bc2c29e7b85fb6e2ab8289ed93f6104e9"
+    sdk_version: "mspm0_sdk@2.02.00.05"
+    sysconfig_version: "1.21.0+3721"
+    license_status: REVIEW_REQUIRED
+    redistribution_status: REVIEW_REQUIRED
+    review_file: "docs/example_reviews/sg90.md"
+
+  - id: lckfb-tmx-oled-ssd1306-iic
+    name: "0.96寸IIC单色屏 (SSD1306)"
+    source_url: "https://wiki.lckfb.com/zh-hans/tmx-mspm0g3507/module/ (精确链接 UNKNOWN)"
+    downloaded_at: 2026-08-04
+    archive_sha256: "dee574d97d9d8681c88d4f93459eecf2f25f7e56ea07c3a539069ed83eb3b426"
+    sdk_version: "mspm0_sdk@2.02.00.05"
+    sysconfig_version: "1.21.0+3721"
+    license_status: REVIEW_REQUIRED
+    redistribution_status: REVIEW_REQUIRED
+    review_file: "docs/example_reviews/oled-ssd1306-iic.md"
+
+  - id: lckfb-tmx-mpu6050
+    name: "MPU6050六轴传感器"
+    source_url: "https://wiki.lckfb.com/zh-hans/tmx-mspm0g3507/module/ (精确链接 UNKNOWN)"
+    downloaded_at: 2026-08-04
+    archive_sha256: "4cb64a452d4c1aa7e134965e913bf3495421d2dea2c3afb409baa36fb0f4b2d9"
+    sdk_version: "mspm0_sdk@2.02.00.05"
+    sysconfig_version: "1.21.0+3721"
+    license_status: LICENSE_MISSING        # inv_mpu.c 声明 See included License.txt，但 ZIP 内无此文件
+    redistribution_status: REVIEW_REQUIRED
+    review_file: "docs/example_reviews/mpu6050.md"
+
+  # 注：其余 63 个模块按阶段需要时再登记 + 即时评审（见 PLAN 借鉴流程），不一次性全部分析。
+  # TI LaunchPad 例程（外部 D:\...\mspm0-modules-main）仅作 API 参考，不入库，也不在本清单登记为可再分发资源。
