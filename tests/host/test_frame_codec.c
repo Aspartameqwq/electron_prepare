@@ -142,23 +142,30 @@ static void test_sof_overlap(void)
 static void test_timeouts(void)
 {
     frame_t out;
-    uint32_t now = 1000u;
-
-    /* 总组帧超时：inter_byte 设大、total 设小，隔离验证总超时路径 */
+    uint32_t t;
     frame_parser_t p;
-    frame_parser_init(&p, 10000u, 100u);
-    CHECK(frame_parser_feed(&p, FRAME_SOF1, now, &out) == FRAME_INCOMPLETE);
-    CHECK(frame_parser_feed(&p, FRAME_SOF2, now + 1u, &out) == FRAME_INCOMPLETE);
-    /* now=1000, frame_start=1000, last=1001；在 now+150=1150 时 (1150-1000)=150>100 → 总超时 */
-    CHECK(frame_parser_poll_timeout(&p, now + 150u) == FRAME_ERR_TOTAL_TIMEOUT);
 
-    /* 字节间隔超时：inter_byte 设小、total 设大，隔离验证间隔超时路径 */
-    frame_parser_init(&p, 100u, 10000u);
-    CHECK(frame_parser_feed(&p, FRAME_SOF1, now, &out) == FRAME_INCOMPLETE);
-    CHECK(frame_parser_feed(&p, FRAME_SOF2, now + 1u, &out) == FRAME_INCOMPLETE);
-    CHECK(frame_parser_feed(&p, FRAME_VERSION, now + 2u, &out) == FRAME_INCOMPLETE);
-    /* last=1002；在 now+2+101=1103 时 (1103-1002)=101>100 → 字节间隔超时 */
-    CHECK(frame_parser_poll_timeout(&p, now + 2u + 101u) == FRAME_ERR_TIMEOUT);
+    /* 总组帧超时：inter=100,total=500；以 99ms 间隔喂字节保持间隔新鲜，
+     * 总时长超过 500ms 时触发 TOTAL（inter 间隔仍 < 100）。 */
+    CHECK(frame_parser_init(&p, 100u, 500u));
+    t = 1000u;
+    CHECK(frame_parser_feed(&p, FRAME_SOF1, t, &out) == FRAME_INCOMPLETE);   /* frame_start=1000 */
+    t += 99u; CHECK(frame_parser_feed(&p, FRAME_SOF2, t, &out) == FRAME_INCOMPLETE);
+    t += 99u; CHECK(frame_parser_feed(&p, FRAME_VERSION, t, &out) == FRAME_INCOMPLETE);
+    t += 99u; CHECK(frame_parser_feed(&p, 0x00, t, &out) == FRAME_INCOMPLETE);  /* TYPE */
+    t += 99u; CHECK(frame_parser_feed(&p, 0x00, t, &out) == FRAME_INCOMPLETE);  /* FLAGS */
+    t += 99u; CHECK(frame_parser_feed(&p, 0x00, t, &out) == FRAME_INCOMPLETE);  /* SEQ，last≈1495 */
+    t += 10u;  /* t≈1505：inter 间隔 10<100；total 505>500 → TOTAL_TIMEOUT */
+    CHECK(frame_parser_poll_timeout(&p, t) == FRAME_ERR_TOTAL_TIMEOUT);
+
+    /* 字节间隔超时：inter=100,total=1000；间隔超过 100 触发 TIMEOUT */
+    CHECK(frame_parser_init(&p, 100u, 1000u));
+    t = 2000u;
+    CHECK(frame_parser_feed(&p, FRAME_SOF1, t, &out) == FRAME_INCOMPLETE);
+    t += 1u; CHECK(frame_parser_feed(&p, FRAME_SOF2, t, &out) == FRAME_INCOMPLETE);
+    t += 1u; CHECK(frame_parser_feed(&p, FRAME_VERSION, t, &out) == FRAME_INCOMPLETE);
+    /* last=2002；poll t+101=2103：inter 101>100 → TIMEOUT（total 103<1000 不触发） */
+    CHECK(frame_parser_poll_timeout(&p, t + 101u) == FRAME_ERR_TIMEOUT);
 }
 
 static void test_random_roundtrip(void)
@@ -218,6 +225,137 @@ static void test_fuzz(void)
     CHECK(feed_all(&p, buf, len, &now, &out) == FRAME_COMPLETE);
 }
 
+static void test_null_and_config_validation(void)
+{
+    frame_t out;
+    uint32_t now = 1000u;
+    frame_parser_t p;
+
+    /* init 参数校验（v7.2+ 加固） */
+    CHECK(!frame_parser_init(NULL, 100u, 500u));          /* NULL p */
+    CHECK(!frame_parser_init(&p, 0u, 500u));              /* inter_byte==0 */
+    CHECK(!frame_parser_init(&p, 100u, 100u));            /* total == inter_byte */
+    CHECK(!frame_parser_init(&p, 500u, 100u));            /* total < inter_byte */
+    CHECK(frame_parser_init(&p, 100u, 500u));             /* 合法 */
+
+    /* feed / poll 空指针 */
+    CHECK(frame_parser_feed(NULL, 0x00, now, &out) == FRAME_ERR_INVALID_ARG);
+    CHECK(frame_parser_poll_timeout(NULL, now) == FRAME_ERR_INVALID_ARG);
+
+    /* encode out_len==NULL */
+    frame_t f;
+    memset(&f, 0, sizeof f);
+    uint8_t buf[FRAME_MAX_TOTAL];
+    CHECK(frame_encode(&f, buf, sizeof buf, NULL) == FRAME_ERR_INVALID_ARG);
+}
+
+static void test_encode_clears_outlen_on_error(void)
+{
+    frame_t f;
+    memset(&f, 0, sizeof f);
+    uint8_t buf[FRAME_MAX_TOTAL];
+    size_t len;
+
+    len = 99u;                                            /* 容量不足 → 错误且清零 */
+    CHECK(frame_encode(&f, buf, 3u, &len) == FRAME_ERR_OUTPUT_CAPACITY);
+    CHECK(len == 0u);
+
+    memset(&f, 0, sizeof f);
+    f.length = FRAME_PAYLOAD_MAX + 1u;                    /* 超长载荷 → 错误且清零 */
+    len = 99u;
+    CHECK(frame_encode(&f, buf, sizeof buf, &len) == FRAME_ERR_LENGTH);
+    CHECK(len == 0u);
+
+    memset(&f, 0, sizeof f);
+    f.length = 2u;                                        /* 成功 → 写入实际长度 */
+    CHECK(frame_encode(&f, buf, sizeof buf, &len) == FRAME_COMPLETE);
+    CHECK(len == FRAME_FIXED_HEADER + 2u + FRAME_CRC_BYTES);
+}
+
+static void test_timeout_wrap_uint32(void)
+{
+    /* 时间戳接近 UINT32_MAX 回绕：无符号差值 + int32 比较仍应正确 */
+    frame_parser_t p;
+    CHECK(frame_parser_init(&p, 100u, 500u));
+    frame_t out;
+    uint32_t now = UINT32_MAX - 2u;
+    CHECK(frame_parser_feed(&p, FRAME_SOF1, now, &out) == FRAME_INCOMPLETE);
+    now = UINT32_MAX - 1u;
+    CHECK(frame_parser_feed(&p, FRAME_SOF2, now, &out) == FRAME_INCOMPLETE);
+    now = 10u;                                            /* 跨回绕：距 last 无符号差 11 < 100 → 未超时 */
+    CHECK(frame_parser_poll_timeout(&p, now) == FRAME_INCOMPLETE);
+    now = 120u;                                           /* 距 last 无符号差 121 > 100 → 字节间隔超时 */
+    CHECK(frame_parser_poll_timeout(&p, now) == FRAME_ERR_TIMEOUT);
+}
+
+static void test_timeout_exact_boundary(void)
+{
+    frame_parser_t p;
+    CHECK(frame_parser_init(&p, 100u, 500u));
+    frame_t out;
+    uint32_t now = 1000u;
+    CHECK(frame_parser_feed(&p, FRAME_SOF1, now, &out) == FRAME_INCOMPLETE);
+    CHECK(frame_parser_poll_timeout(&p, now + 100u) == FRAME_INCOMPLETE);   /* 精确相等 → 不超时 */
+    CHECK(frame_parser_poll_timeout(&p, now + 101u) == FRAME_ERR_TIMEOUT);  /* 超过 1 → 超时 */
+}
+
+static void test_multiframe_stream(void)
+{
+    frame_parser_t p;
+    CHECK(frame_parser_init(&p, 100u, 500u));
+    frame_t frames[3];
+    for (int i = 0; i < 3; i++) {
+        memset(&frames[i], 0, sizeof frames[i]);
+        frames[i].type   = (uint8_t)(0x10 + i);
+        frames[i].length = (uint16_t)(1u + i);
+        for (uint16_t j = 0; j < frames[i].length; j++) {
+            frames[i].payload[j] = (uint8_t)(j + i);
+        }
+    }
+    uint8_t stream[3 * FRAME_MAX_TOTAL];
+    size_t off = 0;
+    for (int i = 0; i < 3; i++) {
+        size_t len = 0;
+        CHECK(frame_encode(&frames[i], stream + off, sizeof stream - off, &len) == FRAME_COMPLETE);
+        off += len;
+    }
+    frame_t out;
+    uint32_t now = 2000u;
+    int complete = 0;
+    for (size_t i = 0; i < off; i++) {
+        if (frame_parser_feed(&p, stream[i], now++, &out) == FRAME_COMPLETE) {
+            CHECK(out.type == (uint8_t)(0x10 + complete));
+            complete++;
+        }
+    }
+    CHECK(complete == 3);
+}
+
+static void test_recover_after_error(void)
+{
+    frame_parser_t p;
+    CHECK(frame_parser_init(&p, 100u, 500u));
+    frame_t out;
+    uint32_t now = 3000u;
+    uint8_t buf[FRAME_MAX_TOTAL];
+    size_t len = 0;
+
+    frame_t bad;                                          /* 错误帧：CRC 损坏 */
+    memset(&bad, 0, sizeof bad);
+    bad.length = 1u;
+    bad.payload[0] = 0xAAu;
+    CHECK(frame_encode(&bad, buf, sizeof buf, &len) == FRAME_COMPLETE);
+    buf[len - 2u] ^= 0xFFu;
+    CHECK(feed_all(&p, buf, len, &now, &out) == FRAME_ERR_CRC);
+
+    frame_t good;                                         /* 紧随其后的合法帧应能恢复解析 */
+    memset(&good, 0, sizeof good);
+    good.type = 0x55u;
+    CHECK(frame_encode(&good, buf, sizeof buf, &len) == FRAME_COMPLETE);
+    CHECK(feed_all(&p, buf, len, &now, &out) == FRAME_COMPLETE);
+    CHECK(out.type == 0x55u);
+}
+
 int main(void)
 {
     test_crc_vector();
@@ -252,6 +390,13 @@ int main(void)
     test_timeouts();
     test_random_roundtrip();
     test_fuzz();
+
+    test_null_and_config_validation();
+    test_encode_clears_outlen_on_error();
+    test_timeout_wrap_uint32();
+    test_timeout_exact_boundary();
+    test_multiframe_stream();
+    test_recover_after_error();
 
     if (g_fails) {
         printf("frame_codec test: %d FAILURE(S)\n", g_fails);

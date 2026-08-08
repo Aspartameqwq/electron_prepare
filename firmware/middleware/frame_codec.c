@@ -45,15 +45,23 @@ uint16_t frame_crc16(const uint8_t *data, size_t len)
     return crc;
 }
 
-void frame_parser_init(frame_parser_t *p, uint32_t inter_byte_ms, uint32_t total_ms)
+bool frame_parser_init(frame_parser_t *p, uint32_t inter_byte_ms, uint32_t total_ms)
 {
+    /* 参数校验：p 非空；超时须满足 0 < inter_byte < total（否则拒绝，不进入可用状态） */
+    if (p == NULL || inter_byte_ms == 0u || total_ms <= inter_byte_ms) {
+        return false;
+    }
     frame_parser_reset(p);
     p->inter_byte_timeout_ms = inter_byte_ms;
     p->total_timeout_ms      = total_ms;
+    return true;
 }
 
 void frame_parser_reset(frame_parser_t *p)
 {
+    if (p == NULL) {           /* 防御：NULL 安全无操作 */
+        return;
+    }
     p->state        = ST_IDLE;
     p->last_byte_ms = 0u;
     p->frame_start_ms = 0u;
@@ -86,6 +94,9 @@ static frame_status_t frame_resync(frame_parser_t *p, uint8_t byte,
 frame_status_t frame_parser_feed(frame_parser_t *p, uint8_t byte,
                                  uint32_t now_ms, frame_t *out)
 {
+    if (p == NULL) {                       /* 防御：非法参数 */
+        return FRAME_ERR_INVALID_ARG;
+    }
     /* 帧中途先查超时（字节间隔 / 总组帧），任一命中即复位并重叠重同步 */
     if (p->state != ST_IDLE) {
         if ((int32_t)(now_ms - p->last_byte_ms) > (int32_t)p->inter_byte_timeout_ms) {
@@ -198,6 +209,9 @@ frame_status_t frame_parser_feed(frame_parser_t *p, uint8_t byte,
 
 frame_status_t frame_parser_poll_timeout(frame_parser_t *p, uint32_t now_ms)
 {
+    if (p == NULL) {                       /* 防御：非法参数 */
+        return FRAME_ERR_INVALID_ARG;
+    }
     if (p->state == ST_IDLE) {
         return FRAME_INCOMPLETE;
     }
@@ -218,6 +232,7 @@ frame_status_t frame_encode(const frame_t *frame, uint8_t *out,
     if (frame == NULL || out == NULL || out_len == NULL) {
         return FRAME_ERR_INVALID_ARG;
     }
+    *out_len = 0u;                       /* 失败时保证清零（成功才写入实际长度） */
     if (frame->length > FRAME_PAYLOAD_MAX) {
         return FRAME_ERR_LENGTH;
     }

@@ -125,12 +125,28 @@ static void test_model(void)
     }
 }
 
+static void test_null_safety(void)
+{
+    uint8_t b = 0u;
+    ring_buffer_t rb;
+    CHECK(!ring_buffer_push(NULL, 0x11u));      /* NULL rb → false */
+    CHECK(!ring_buffer_pop(NULL, &b));           /* NULL rb → false */
+    CHECK(!ring_buffer_pop(&rb, NULL));          /* NULL byte → false */
+    CHECK(ring_buffer_available(NULL) == 0u);
+    CHECK(ring_buffer_free(NULL) == 0u);
+    CHECK(ring_buffer_is_empty(NULL));           /* NULL → true（视为空） */
+    CHECK(!ring_buffer_is_full(NULL));
+    ring_buffer_init(NULL);                      /* 不崩溃 */
+    ring_buffer_reset(NULL);                     /* 不崩溃 */
+}
+
 int main(void)
 {
     test_basic();
     test_full();
     test_wrap();
     test_model();
+    test_null_safety();
 
     if (g_fails) {
         printf("ring_buffer test: %d FAILURE(S)\n", g_fails);

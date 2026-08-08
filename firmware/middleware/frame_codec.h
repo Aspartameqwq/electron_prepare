@@ -89,29 +89,33 @@ typedef struct {
     int      state;                         /* 内部状态机（见 frame_codec.c），勿直接操作 */
 } frame_parser_t;
 
-/** 初始化解析器。超时参数可按链路计算后传入。 */
-void frame_parser_init(frame_parser_t *p, uint32_t inter_byte_ms, uint32_t total_ms);
+/**
+ * @brief 初始化解析器。
+ * @return true=成功；false=p 为 NULL，或 `inter_byte_ms==0`，或 `total_ms<=inter_byte_ms`（非法配置，不进入可用状态）。
+ * @note 超时参数须满足 `0 < inter_byte < total`，可按链路计算后传入。
+ */
+bool frame_parser_init(frame_parser_t *p, uint32_t inter_byte_ms, uint32_t total_ms);
 
-/** 复位解析器（用于 RX 重同步临界区等）。 */
+/** 复位解析器（用于 RX 重同步临界区等）。p 为 NULL 时安全无操作。 */
 void frame_parser_reset(frame_parser_t *p);
 
 /**
  * @brief 喂入一个字节。
  * @param out 解析出完整帧时写入（可为 NULL，此时仅校验不取帧）。
- * @return FRAME_COMPLETE（out 已被填充）/ FRAME_INCOMPLETE / 各类错误码。
+ * @return FRAME_COMPLETE（out 已被填充）/ FRAME_INCOMPLETE / 各类错误码；p 为 NULL 返回 FRAME_ERR_INVALID_ARG。
  * @note 错误返回后解析器已复位；若触发错误的是 0xA5，会按 SOF 重叠规则保留为新帧首字节。
  */
 frame_status_t frame_parser_feed(frame_parser_t *p, uint8_t byte, uint32_t now_ms, frame_t *out);
 
 /**
  * @brief 无新字节到达时周期性调用，检查字节间隔 / 总组帧超时。
- * @return FRAME_INCOMPLETE（正常）/ FRAME_ERR_TIMEOUT / FRAME_ERR_TOTAL_TIMEOUT（已复位）。
+ * @return FRAME_INCOMPLETE（正常）/ FRAME_ERR_TIMEOUT / FRAME_ERR_TOTAL_TIMEOUT（已复位）；p 为 NULL 返回 FRAME_ERR_INVALID_ARG。
  */
 frame_status_t frame_parser_poll_timeout(frame_parser_t *p, uint32_t now_ms);
 
 /**
  * @brief 把逻辑帧编码为线上字节流（显式 little-endian，非 packed 序列化）。
- * @param out 输出缓冲；@param out_cap 容量；@param out_len 成功时实际长度。
+ * @param out 输出缓冲；@param out_cap 容量；@param out_len 成功时实际长度，**失败时保证置 0**。
  * @return FRAME_COMPLETE（成功）或错误码。
  */
 frame_status_t frame_encode(const frame_t *frame, uint8_t *out, size_t out_cap, size_t *out_len);
