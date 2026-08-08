@@ -17,10 +17,12 @@
 
 ## 二、纯软件预研资产（非阶段完成）
 
-| 模块 | 状态 | release_gate | tested/evidence commit | 已知缺口 |
+| 模块 | 状态 | release_gate | tested/evidence commit | 已知缺口（剩余） |
 |---|---|---|---|---|
-| ring_buffer | HOST_TESTED | **NOT_MET** | `ed63fcf` / `f0ab9c8` | Sanitizer 未启用、**目标编译器并发语义未验证**（volatile≠内存同步，host 仅单线程）、UART transport 集成待定 |
-| frame_codec | HOST_TESTED | **NOT_MET** | `ed63fcf` / `f0ab9c8` | 时间戳回绕、Sanitizer 未启用、**空指针/超时参数校验缺失**、`frame_encode` 失败时 `*out_len` 未清零、UART transport 集成待定 |
+| ring_buffer | HOST_TESTED | **NOT_MET** | `ed63fcf` / `f0ab9c8` | **目标编译器并发语义未验证**（volatile≠内存同步，host 仅单线程）、UART transport 集成待定 |
+| frame_codec | HOST_TESTED | **NOT_MET** | `ed63fcf` / `f0ab9c8` | UART transport 集成待定 |
+
+> **host 加固（2026-08-04，分支 `chore/p0-host-hardening`）**：ring_buffer/frame_codec 已补**空指针/配置校验**（`frame_parser_init` 拒绝非法超时并返回 bool）、`frame_encode` 失败**清 `*out_len`**、**UINT32_MAX 回绕 / 多帧连续流 / 错误后恢复 / 阈值精确边界** 测试；Sanitizer 通过 `scripts/test_host.ps1 -Sanitize`（ASan/UBSan）运行。**`release_gate` 仍 `NOT_MET`**：目标端并发语义（SPSC 发布顺序须在目标编译器 + 板端验证）与 UART transport 集成待定。
 
 规则（见 PLAN.md §14）：测试结果只对记录 commit 有效；`BOARD_TESTED` 必须有用户上板证据。
 上述两模块**仅为预研**：P3 正式阶段须在 `firmware/` 工程内**接入**、**补齐**边界校验与目标端并发验证、**复核**，并在**目标编译器与板端重新验证**后方可算作阶段完成（**无证据表明现有算法必须整体重写**）。
