@@ -1,0 +1,53 @@
+/**
+ * control.syscfg — 外设配置唯一机器事实源（PLAN.md §一）
+ *
+ * P1 最小工程配置（feat/p01-bringup）：
+ *   - 默认时钟（SYSCTL.forceDefaultClkConfig，32MHz 基线；80MHz 属 E3，不在 P1/P2 启用）
+ *   - PB22 板载 LED（GPIO 输出，初始低 = 熄灭）
+ *   - UART0 @ PA10/PA11（板上 CH340 → PC COM12，115200 8N1）——文本调试日志
+ *   - DEBUGSS（SWD: PA19/PA20，XDS110 调试）
+ *
+ * P1 无 PWM/TIMG/I2C/UART1——按"目录按阶段创建、外设按阶段加入"原则，后续阶段再加。
+ * 禁改生成文件（firmware/Debug/syscfg/*）；改这里之后重新生成。
+ *
+ * @cliArgs --device "MSPM0G3507" --package "LQFP-64(PM)" --product "mspm0_sdk@2.10.00.04"
+ * @versions {"tool":"1.27.1+4634"}
+ */
+const SYSCTL = scripting.addModule("/ti/driverlib/SYSCTL");
+const Board  = scripting.addModule("/ti/driverlib/Board", {}, false);
+
+/* 默认时钟基线（PLAN.md：P1/P2 用 SDK 默认稳定时钟，80MHz 属 E3） */
+SYSCTL.forceDefaultClkConfig = true;
+
+/* PB22 板载 LED：GPIO 输出，初始低（熄灭）——P1 心跳灯 */
+const LED = scripting.addModule("/ti/driverlib/GPIO", {}, false);
+const LED1 = LED.addInstance();
+LED1.$name                          = "LED";
+LED1.associatedPins.create(1);
+LED1.associatedPins[0].$name        = "PIN";
+LED1.associatedPins[0].ioStructure  = "SD";
+LED1.associatedPins[0].assignedPort = "PORTB";
+LED1.associatedPins[0].assignedPin  = "22";
+LED1.associatedPins[0].pin.$assign  = "PB22";
+LED1.associatedPins[0].initialValue = "CLEARED"; /* 上电熄灭（安全默认） */
+
+/* UART0 = 文本调试日志（板上 CH340 → PC；FIXED_BOARD_FUNCTION，见 PLAN.md §二） */
+const UART = scripting.addModule("/ti/driverlib/UART", {}, false);
+const UART0 = UART.addInstance();
+UART0.$name                        = "DEBUG_UART";
+UART0.targetBaudRate               = 115200;
+UART0.peripheral.$assign           = "UART0";
+UART0.peripheral.txPin.$assign     = "PA10";
+UART0.peripheral.rxPin.$assign     = "PA11";
+UART0.txPinConfig.$name            = "ti_driverlib_gpio_debug_tx";
+UART0.txPinConfig.enableConfig     = true;
+UART0.txPinConfig.internalResistor = "PULL_UP";
+UART0.rxPinConfig.$name            = "ti_driverlib_gpio_debug_rx";
+UART0.rxPinConfig.enableConfig     = true;
+UART0.rxPinConfig.internalResistor = "PULL_UP";
+
+/* SWD 调试口（XDS110；FIXED_BOARD_FUNCTION） */
+Board.peripheral.$suggestSolution          = "DEBUGSS";
+Board.peripheral.swclkPin.$suggestSolution = "PA20";
+Board.peripheral.swdioPin.$suggestSolution = "PA19";
+SYSCTL.peripheral.$suggestSolution         = "SYSCTL";

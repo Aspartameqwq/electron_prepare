@@ -10,8 +10,8 @@
 | 阶段 | 状态 | 说明 |
 |---|---|---|
 | P0 | **COMPLETED**（2026-08-04） | 工具链锁定 / 硬件档案 / host 规范（clang C11 + Sanitizer）/ 勘误 / 默认调试器 XDS110 / **探针证据**（`detect_probe`=XDS110 0451:BEF3 COM11/12；DAP 连接+寄存器读取成功，`logs/tmp/toolchain/probe_connect.txt`）/ **治理闭环**（manifest 81 项+校验脚本+`p0-gate` CI+ADR-001 分支策略，经 PR #1 真实合并）/ host 核心加固（PR #2）。可选（不阻塞）：GitHub 端将 `p0-gate` 设为 main required check |
-| P1 | **NOT_STARTED** | 尚无 CCS 最小工程 |
-| P1A | **NOT_STARTED** | 尚无 `control.syscfg` / 引脚预解算 |
+| P1 | **COMPLETED**（2026-08-28，分支 `feat/p01-bringup`） | 最小工程 `firmware/`（`control.syscfg` 默认时钟+PB22 LED+UART0+SWD；唯一 `app/main.c`）；CCS headless 构建（`p1_bringup.projectspec`，tiarmclang 4.0.4，`-Wall -Wextra` **0 警告**，FLASH 2.5KB/128KB、RAM 512B/32KB）；**XDS110 烧录成功**；**上板验收**：LED 1Hz 闪烁（用户目视）、UART0 banner 每次复位打印一次（`fw v0.1.0 / app LED_BRINGUP / CPUCLK=32MHz / rst=SYS_DEBUG`，捕获 `logs/tmp/p1_uart_cap3.txt` 与 `p1_rst2/3.txt`）、System Reset ×3 成功、执行器全程无输出（P1 无执行器代码）；构建/烧录沉淀 `scripts/build.ps1` / `flash.ps1` + 固化 `firmware/targetConfigs/MSPM0G3507.ccxml` |
+| P1A | **NOT_STARTED** | 尚无 `control.syscfg` 全资源预解算（pin_preflight） |
 | P2 | **NOT_STARTED** | 尚无 tick / scheduler |
 | P3 | **NOT_STARTED** | 尚无 `uart1_transport`、调度接入、板端回环、有界服务 |
 
