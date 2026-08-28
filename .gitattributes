@@ -1,0 +1,2 @@
+# 参考资料按字节入库：禁用换行转换，保证 SHA-256 在任何平台 checkout 后一致
+examples_and_documents/** -text
