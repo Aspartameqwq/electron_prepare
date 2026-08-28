@@ -1,6 +1,6 @@
 # STATUS.md — 阶段结果与模块验证状态
 
-> **状态真实性声明（2026-08-04 纠偏）**：项目当前处于 **P0（IN_PROGRESS）** 准备阶段。
+> **状态真实性声明（2026-08-04）**：**P0 已 COMPLETED**（探针证据 + 治理闭环均落地）。
 > `ring_buffer` / `frame_codec` 是**提前完成的纯软件预研资产**（host 功能测试通过），
 > **不代表 P3 已开始**——P3 还缺 `uart1_transport`、调度器接入、板端回环与有界服务。
 > 阶段状态词汇：`NOT_STARTED / IN_PROGRESS / COMPLETED / SOFTWARE_READY / BLOCKED / FAILED`。
@@ -9,7 +9,7 @@
 
 | 阶段 | 状态 | 说明 |
 |---|---|---|
-| P0 | **IN_PROGRESS** | 工具链锁定/硬件档案/host 规范/勘误/默认调试器 XDS110 已就绪；剩余：`detect_probe`（需板子）、**最小 CI（host 测试 / YAML 解析 / 版本一致性 / 绝对路径 / Markdown 链接）** 与 **从下一次提交起强制分支 + PR** 落地。**复杂 CCS 构建 CI 不属于 P0** |
+| P0 | **COMPLETED**（2026-08-04） | 工具链锁定 / 硬件档案 / host 规范（clang C11 + Sanitizer）/ 勘误 / 默认调试器 XDS110 / **探针证据**（`detect_probe`=XDS110 0451:BEF3 COM11/12；DAP 连接+寄存器读取成功，`logs/tmp/toolchain/probe_connect.txt`）/ **治理闭环**（manifest 81 项+校验脚本+`p0-gate` CI+ADR-001 分支策略，经 PR #1 真实合并）/ host 核心加固（PR #2）。可选（不阻塞）：GitHub 端将 `p0-gate` 设为 main required check |
 | P1 | **NOT_STARTED** | 尚无 CCS 最小工程 |
 | P1A | **NOT_STARTED** | 尚无 `control.syscfg` / 引脚预解算 |
 | P2 | **NOT_STARTED** | 尚无 tick / scheduler |

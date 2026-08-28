@@ -386,7 +386,7 @@ i2c_status_t i2c_write_read_blocking(..., uint32_t timeout_ms);
 
 ## 十二、核心实施阶段（P0~P10）
 
-**阶段结果（v7.2 增补）**：`NOT_STARTED`＝未开始；`IN_PROGRESS`＝进行中；`COMPLETED`＝软件+上板验收完成；`SOFTWARE_READY`＝源码+host+构建完成等待硬件（可进不依赖该硬件输出的软件工作，不得进依赖其真实输出的闭环阶段）；`BLOCKED`＝缺硬件/参数/引脚/工具，只阻塞直接依赖阶段；`FAILED`＝现有条件下未通过，先修复。**当前如实状态：P0=IN_PROGRESS，P1/P1A/P2/P3=NOT_STARTED（`ring_buffer`/`frame_codec` 仅为预研资产，release_gate=NOT_MET，见 `docs/STATUS.md`）。**
+**阶段结果（v7.2 增补）**：`NOT_STARTED`＝未开始；`IN_PROGRESS`＝进行中；`COMPLETED`＝软件+上板验收完成；`SOFTWARE_READY`＝源码+host+构建完成等待硬件（可进不依赖该硬件输出的软件工作，不得进依赖其真实输出的闭环阶段）；`BLOCKED`＝缺硬件/参数/引脚/工具，只阻塞直接依赖阶段；`FAILED`＝现有条件下未通过，先修复。**当前如实状态：P0=COMPLETED（探针证据+治理闭环，2026-08-04），P1/P1A/P2/P3=NOT_STARTED（`ring_buffer`/`frame_codec` 仅为预研资产，release_gate=NOT_MET，见 `docs/STATUS.md`）。**
 
 | 阶段 | 内容 | 关键验收（基础必做 / 有仪器选做） |
 |---|---|---|
