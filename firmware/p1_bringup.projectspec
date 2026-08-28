@@ -1,0 +1,72 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  P1 最小工程 projectspec（PLAN.md P1：单 main + PB22 LED + UART0 启动日志）
+  用途：CCS Theia 导入 / ccs-server-cli projectCreate+projectBuild headless 构建。
+  说明：
+    - 工程就地引用 firmware/ 下源文件（action="link"，不复制），目录即仓库结构；
+    - SysConfig 由工程构建自动调用（sysConfigBuildOptions），产物进 Debug/syscfg；
+    - control.syscfg 为唯一事实源；Debug/ 构建产物不入 git（.gitignore）。
+-->
+<projectSpec>
+    <applicability>
+        <when>
+            <context deviceFamily="ARM" deviceId="MSPM0G3507"/>
+        </when>
+    </applicability>
+
+    <project
+        title="P1 bringup"
+        name="firmware_p1_bringup"
+        configurations="Debug"
+        toolChain="TICLANG"
+        connection="TIXDS110_Connection.xml"
+        device="MSPM0G3507"
+        ignoreDefaultDeviceSettings="true"
+        ignoreDefaultCCSSettings="true"
+        products="MSPM0-SDK;sysconfig"
+        compilerBuildOptions="
+            -I${PROJECT_ROOT}/app
+            -I${PROJECT_ROOT}/config
+            -I${PROJECT_ROOT}/${ConfigName}/syscfg
+            -O2
+            @${PROJECT_ROOT}/${ConfigName}/syscfg/device.opt
+            -I${COM_TI_MSPM0_SDK_INSTALL_DIR}/source/third_party/CMSIS/Core/Include
+            -I${COM_TI_MSPM0_SDK_INSTALL_DIR}/source
+            -gdwarf-3
+            -mcpu=cortex-m0plus
+            -march=thumbv6m
+            -mfloat-abi=soft
+            -mthumb
+            -Wall
+            -Wextra
+        "
+        linkerBuildOptions="
+            -ldevice.cmd.genlibs
+            -L${COM_TI_MSPM0_SDK_INSTALL_DIR}/source
+            -L${PROJECT_ROOT}
+            -L${PROJECT_BUILD_DIR}/syscfg
+            -Wl,--rom_model
+            -Wl,--warn_sections
+            -Wl,--diag_suppress=10234-D
+            -L${CG_TOOL_ROOT}/lib
+            -llibc.a
+        "
+        sysConfigBuildOptions="
+            --output ${PROJECT_BUILD_DIR}/syscfg
+            --product ${COM_TI_MSPM0_SDK_INSTALL_DIR}/.metadata/product.json
+            --compiler ticlang
+        "
+        description="P1 minimal bringup: PB22 LED heartbeat + UART0 boot banner (single main, no actuators)">
+        <property name="buildProfile" value="release"/>
+        <property name="isHybrid" value="true"/>
+
+        <!-- 应用源码（就地引用） -->
+        <file path="app/main.c" openOnCreation="false" excludeFromBuild="false" action="link"/>
+        <file path="app/app_config.h" openOnCreation="false" excludeFromBuild="false" action="link"/>
+
+        <!-- 预研纯算法（P3 接入 transport 后参与板端构建；当前不编入，保持 P1 最小） -->
+
+        <!-- 唯一事实源 -->
+        <file path="control.syscfg" openOnCreation="true" excludeFromBuild="false" action="link"/>
+    </project>
+</projectSpec>

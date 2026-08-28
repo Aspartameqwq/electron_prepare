@@ -15,5 +15,8 @@ $env:DSLITE_PATH = "C:\ti\ccs\ccs_base\DebugServer\bin\DSLite.exe"
 # 调试/串口端口（按需填写，如 COM6）
 $env:SERIAL_PORT = ""
 
+# mspm0-ccs skill 安装目录（含 scripts/ccs_dss_debug.py 等）
+$env:MSPM0_CCS_SKILL = "C:\Users\<用户名>\.claude\skills\mspm0-ccs"
+
 # 本机 host 测试编译器（可选，默认 clang）
 # $env:CC = "clang"
