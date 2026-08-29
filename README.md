@@ -137,8 +137,9 @@ scripts/                build.ps1 · flash.ps1 · verify.ps1 · test_host.ps1
 ## 九、当前状态（如实）
 
 - **P0：COMPLETED**（2026-08-04）——工具链锁定 / 硬件档案 / host 规范（含 Sanitizer）/ 勘误 / 默认调试器 XDS110 / **探针实测证据**（XDS110 ↔ MSPM0G3507 DAP 连通 + 寄存器读取）/ 治理闭环（manifest 81 项 + 校验脚本 + `p0-gate` CI + ADR-001 分支策略，PR #1 合并）。
-- **P1：COMPLETED**（2026-08-28）——最小工程 `firmware/`（`control.syscfg` + 唯一 `app/main.c`）；CCS headless 构建 0 警告（FLASH 2.5KB / RAM 512B）；**XDS110 烧录 + 上板验收通过**（LED 1Hz 目视确认 + UART0 启动 banner 每复位一次 + System Reset ×3）；构建/烧录沉淀 `scripts/build.ps1` / `flash.ps1`。
-- **P1A / P2 / P3：NOT_STARTED**——尚无全资源引脚预解算、scheduler、`uart1_transport`。
+- **P1：IN_PROGRESS**（2026-08-29 切 80MHz 基线，等待冷启动×3）——最小工程 `firmware/`（`control.syscfg` **80MHz 正式基线** HFXT+SYSPLL + 唯一 `app/main.c`）；headless 构建 0 编译警告；XDS110 烧录成功；80MHz 板端 System Reset×1 验证（banner `CPUCLK=80000000 Hz`）。**32MHz 旧板端结果历史保留、不适用于当前版本**。**待用户冷启动×3 后进入 COMPLETED（以 STATUS 为准）**。
+- **P1A：COMPLETED**（2026-08-29）——全资源预解算 0 error（TIMG12 可分配 ✓；舵机定时器 TIMG6→TIMA1）；`docs/RESOURCE_MAP.md` + `docs/PINMAP.md`（DRAFT）已建。
+- **P2 / P3：NOT_STARTED**——尚无 scheduler、`uart1_transport`。
 - **纯软件预研资产（非阶段完成）**：`ring_buffer` + `frame_codec` 已通过 host 测试（`HOST_TESTED`，CRC 向量 `0x78DA`、回绕/恢复/多帧/Sanitizer 全过），但 `release_gate = NOT_MET`（目标端并发 / transport 集成待定），见 `docs/STATUS.md`。**这不等同于 P3 完成。**
 - 调试器决策（官方文档确认）：天猛星**无板载调试器**，**默认调试器 = 外部 XDS110**（SWD: PA19=SWDIO / PA20=SWCLK），J-Link 备用；禁 ST-LINK。
-- 目录"当前/计划"区分见第四节；`firmware/` 目前仅含预研纯算法文件，尚未形成可编译工程。
+- 目录"当前/计划"区分见第四节；`firmware/` 为**已可编译的 CCS 工程**（80MHz 基线，headless 构建/烧录脚本齐备）。

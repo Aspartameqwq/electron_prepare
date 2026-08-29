@@ -26,3 +26,11 @@ logs/tmp/
 # Debug/ 已在上方规则覆盖（含子目录）；.settings/ 已在上方 IDE 规则覆盖
 .clangd/
 .theia/
+
+# ---- CCS 生成的本机工程派生产物（由 projectspec + SysConfig 可复现，异地重建已验证）----
+firmware/.project
+firmware/.cproject
+firmware/.ccsproject
+firmware/.settings/
+firmware/.clangd
+firmware/.theia/

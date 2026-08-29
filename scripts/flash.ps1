@@ -1,11 +1,18 @@
-# scripts/flash.ps1 — 固件烧录（XDS110 + CCS DSS）
-# 用法： powershell -ExecutionPolicy Bypass -File scripts/flash.ps1 [-Run] [-Capture]
-# 依赖： mspm0-ccs skill 脚本（ccs_dss_debug.py）+ XDS110 + .ccxml（logs/tmp/toolchain/）
-# 烧录后可选 -Run（复位运行）与 -Capture（监听 CH340 串口打印启动日志）
+# scripts/flash.ps1 - firmware flash via repo-owned DSLite backend (XDS110)
+# Usage: powershell -ExecutionPolicy Bypass -File scripts/flash.ps1 [-Run] [-Capture] [-Backend {dslite|skill}]
+# Backend:
+#   dslite (default): repo-owned path, uses $env:DSLITE_PATH from env.local.ps1.
+#                     Params verified against locked toolchain help evidence:
+#                     logs/tmp/toolchain/dslite_help.txt ("DSLite flash --config=... -f -v -u").
+#   skill           : optional convenience backend (mspm0-ccs skill ccs_dss_debug.py);
+#                     NOT required - repo rules keep skill as optional aid only.
+# Preconditions checked: ccxml exists, .out exists (fresh build), probe reachable.
+# Exit codes strictly checked; no probe serial / COM number written to repo files.
 param(
     [switch]$Run,
     [switch]$Capture,
-    [int]$CaptureSeconds = 15
+    [int]$CaptureSeconds = 15,
+    [ValidateSet('dslite', 'skill')][string]$Backend = 'dslite'
 )
 
 $ErrorActionPreference = 'Stop'
@@ -13,45 +20,69 @@ $Repo = $PSScriptRoot | Split-Path
 
 $envFile = Join-Path $Repo 'scripts/env.local.ps1'
 if (Test-Path $envFile) { . $envFile }
-else { Write-Error "缺少 scripts/env.local.ps1" }
+else { Write-Error "missing scripts/env.local.ps1 (copy env.example.ps1 and fill local paths)" }
 
-$CCXML = Join-Path $Repo 'firmware/targetConfigs/MSPM0G3507.ccxml'   # 固化于仓库（相对路径形式）
+$CCXML = Join-Path $Repo 'firmware/targetConfigs/MSPM0G3507.ccxml'   # committed (portable form)
 $OUT   = Join-Path $Repo 'firmware/Debug/firmware_p1_bringup.out'
-$SKILL = Join-Path $env:MSPM0_CCS_SKILL 'scripts'
 
-# 前置检查（PLAN：烧录脚本必须检查 .ccxml/.out/探针）
-if (-not (Test-Path $CCXML)) { Write-Error "缺少 $CCXML" }
-if (-not (Test-Path $OUT))   { Write-Error "缺少 $OUT（先运行 build.ps1）" }
-
-if ($Capture) {
-    # 串口监听放后台（CH340 串口号在 env.local.ps1 的 SERIAL_PORT）
-    $cap = Start-Process -NoNewWindow -PassThru python -ArgumentList @(
-        (Join-Path $SKILL 'serial_console.py'), '-p', $env:SERIAL_PORT,
-        '-b', '115200', '--duration', "$CaptureSeconds", '--timestamp'
-    ) -RedirectStandardOutput (Join-Path $Repo 'logs/tmp/flash_uart.txt')
-    Start-Sleep -Seconds 3
-}
-
-# 烧录（load = program flash）
-& python (Join-Path $SKILL 'ccs_dss_debug.py') `
-    --ccs-run (Join-Path $env:CCS_HOME 'ccs/scripting/run.bat') `
-    --ccxml $CCXML --timeout-ms 60000 --out $OUT `
-    (Join-Path $Repo 'firmware') load
-if ($LASTEXITCODE -ne 0) { Write-Error "FLASH FAILED（退出码 $LASTEXITCODE）" }
-Write-Host "FLASH OK"
-
-if ($Run -or $Capture) {
-    # 系统复位 + 继续运行（banner 会重新打印，被 -Capture 捕获）
-    & python (Join-Path $SKILL 'ccs_dss_debug.py') `
-        --ccs-run (Join-Path $env:CCS_HOME 'ccs/scripting/run.bat') `
-        --ccxml $CCXML --timeout-ms 30000 --out $OUT `
-        (Join-Path $Repo 'firmware') run-to-symbol --symbols --reset 'System Reset' --leave-running
-    if ($LASTEXITCODE -ne 0) { Write-Error "RUN FAILED（退出码 $LASTEXITCODE）" }
-    Write-Host "RUN OK（复位运行）"
+# ---- preconditions (PLAN: flash script must check ccxml/.out/probe) ----
+if (-not (Test-Path $CCXML)) { Write-Error "missing $CCXML" }
+if (-not (Test-Path $OUT))   { Write-Error "missing $OUT (run scripts/build.ps1 first)" }
+if ([string]::IsNullOrEmpty($env:DSLITE_PATH) -or -not (Test-Path $env:DSLITE_PATH)) {
+    Write-Error "DSLITE_PATH not set or file missing in env.local.ps1"
 }
 
 if ($Capture) {
-    Wait-Process -Id $cap.Id -Timeout ($CaptureSeconds + 5) -ErrorAction SilentlyContinue
-    Write-Host "=== UART 捕获（logs/tmp/flash_uart.txt）==="
+    if ([string]::IsNullOrEmpty($env:SERIAL_PORT)) {
+        Write-Error "SERIAL_PORT not set in env.local.ps1 (board CH340 COM port)"
+    }
+    # UART capture in background; if skill is absent use a plain python fallback note
+    $serialPy = $null
+    if (-not [string]::IsNullOrEmpty($env:MSPM0_CCS_SKILL)) {
+        $candidate = Join-Path $env:MSPM0_CCS_SKILL 'scripts/serial_console.py'
+        if (Test-Path $candidate) { $serialPy = $candidate }
+    }
+    if ($null -eq $serialPy) { Write-Warning 'serial_console.py not available (skill optional); skip UART capture' }
+    else {
+        Start-Process -NoNewWindow -PassThru python -ArgumentList @(
+            $serialPy, '-p', $env:SERIAL_PORT,
+            '-b', '115200', '--duration', "$CaptureSeconds", '--timestamp'
+        ) -RedirectStandardOutput (Join-Path $Repo 'logs/tmp/flash_uart.txt') | Out-Null
+        Start-Sleep -Seconds 3
+    }
+}
+
+# ---- flash (repo-owned DSLite backend; exit code strictly checked) ----
+if ($Backend -eq 'dslite') {
+    Write-Host "backend: DSLite ($env:DSLITE_PATH)"
+    # verified params (dslite_help.txt): flash --config=<ccxml> -f -v -u <file>
+    & $env:DSLITE_PATH flash --config=$CCXML -f -v -u $OUT 2>&1 | Tee-Object -FilePath (Join-Path $Repo 'logs/tmp/flash.log')
+    if ($LASTEXITCODE -ne 0) { Write-Error "FLASH FAILED (DSLite exit $LASTEXITCODE), log: logs/tmp/flash.log" }
+    Write-Host 'FLASH OK (DSLite: load + verify + run)'
+}
+else {
+    # optional convenience backend: mspm0-ccs skill
+    if ([string]::IsNullOrEmpty($env:MSPM0_CCS_SKILL) -or -not (Test-Path (Join-Path $env:MSPM0_CCS_SKILL 'scripts/ccs_dss_debug.py'))) {
+        Write-Error 'skill backend selected but mspm0-ccs skill not found (it is optional; use -Backend dslite)'
+    }
+    $runBat = Join-Path $env:CCS_HOME 'ccs/scripting/run.bat'
+    & python (Join-Path $env:MSPM0_CCS_SKILL 'scripts/ccs_dss_debug.py') `
+        --ccs-run $runBat --ccxml $CCXML --timeout-ms 60000 --out $OUT `
+        (Join-Path $Repo 'firmware') load
+    if ($LASTEXITCODE -ne 0) { Write-Error "FLASH FAILED (skill exit $LASTEXITCODE)" }
+    Write-Host 'FLASH OK (skill backend)'
+
+    if ($Run) {
+        & python (Join-Path $env:MSPM0_CCS_SKILL 'scripts/ccs_dss_debug.py') `
+            --ccs-run $runBat --ccxml $CCXML --timeout-ms 30000 --out $OUT `
+            (Join-Path $Repo 'firmware') run-to-symbol --symbols --reset 'System Reset' --leave-running
+        if ($LASTEXITCODE -ne 0) { Write-Error "RUN FAILED (exit $LASTEXITCODE)" }
+        Write-Host 'RUN OK (reset+run via skill)'
+    }
+}
+
+if ($Capture) {
+    Write-Host '=== UART capture (logs/tmp/flash_uart.txt) ==='
+    Start-Sleep -Seconds $CaptureSeconds
     Get-Content (Join-Path $Repo 'logs/tmp/flash_uart.txt') -ErrorAction SilentlyContinue
 }

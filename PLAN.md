@@ -1,6 +1,6 @@
 # MSPM0G3507 电赛控制类模块库实施计划（v7.2，纠偏补丁）
 
-> v7.2 为纠偏补丁（**不改功能范围**）：① 阶段状态增加 `NOT_STARTED / IN_PROGRESS`，当前如实标注 P0=IN_PROGRESS、P1~P3=NOT_STARTED（`ring_buffer`/`frame_codec` 仅为提前完成的纯软件预研资产，**非阶段完成**）；② I2C 恢复语义改为"超时即返回错误 + `recovery_pending`，控制器恢复由低优先级 service/SAFE 完成，不计入原事务 API"；③ `mspm0-ccs` skill 降为**可选自动化辅助**，强制规则以仓库内 `AGENTS.md`/`PLAN.md` 为准。真实问题通过代码审查、硬件日志与 ADR 修正。
+> v7.2 为纠偏补丁（**不改功能范围**）：① 阶段状态增加 `NOT_STARTED / IN_PROGRESS`，当前如实状态见 `docs/STATUS.md`（P0/P1A=COMPLETED、P1=IN_PROGRESS 等 80MHz 冷启动、P2/P3=NOT_STARTED；`ring_buffer`/`frame_codec` 仅为提前完成的纯软件预研资产，**非阶段完成**）；② I2C 恢复语义改为"超时即返回错误 + `recovery_pending`，控制器恢复由低优先级 service/SAFE 完成，不计入原事务 API"；③ `mspm0-ccs` skill 降为**可选自动化辅助**，强制规则以仓库内 `AGENTS.md`/`PLAN.md` 为准。真实问题通过代码审查、硬件日志与 ADR 修正。
 
 ## Context（目标 + 开发方式约束）
 
@@ -13,7 +13,7 @@
 核心模块库（发布门槛）: UART0调试、UART1 transport、frame_codec、ring_buffer、
   TB6612电机、编码器测速、速度PI、舵机PWM、I2C、SSD1306 OLED、
   MPU6050原始、基础姿态(roll/pitch/gyro_z/yaw_rel)
-可选扩展（不阻塞核心发布）: E1 K230会话层  E2 航向控制+云台  E3 80MHz  E4 WWDT+可靠性
+可选扩展（不阻塞核心发布）: E1 K230会话层  E2 航向控制+云台  E3 性能/功耗/编译优化（80MHz 已于 P1 收口转入正式基线）  E4 WWDT+可靠性
 核心发布点 = P10 核心集成冒烟通过
 ```
 **本计划完全自包含，不依赖任何早期版本。**
@@ -391,7 +391,7 @@ i2c_status_t i2c_write_read_blocking(..., uint32_t timeout_ms);
 | 阶段 | 内容 | 关键验收（基础必做 / 有仪器选做） |
 |---|---|---|
 | P0 | git 骨架+分支规范；AGENTS.md/CLAUDE.md；env 分离；TOOLCHAIN_LOCK（脱敏）+Host 规范；仅需板/芯片/CCS/SDK/调试器信息 | 分支规则就绪；探测探针存档；host 工具链确认 |
-| P1 | CCS 最小工程；单 main.c；默认时钟；PB22 LED+UART0 启动日志；安全启动序 | 冷启动×3、电机舵机无输出、warning 0、烧录退出码 0 |
+| P1 | CCS 最小工程；单 main.c；**80MHz 正式基线**（HFXT 40MHz+SYSPLL）；PB22 LED+UART0 启动日志；安全启动序 | 冷启动×3、电机舵机无输出、warning 0、烧录退出码 0 |
 | P1A | 预检配置分离（pin_preflight.syscfg 非构建）；全资源共存检查→RESOURCE_MAP/PINMAP DRAFT 行 | 实例可共存、无 error、warning 0 或书面豁免；部分失败只阻塞依赖阶段 |
 | P2 | 1ms 时间基准（集中式 ISR 只 tick）+调度器（优先级/注册接口/next_due/快照；1ms 合成任务仅测试） | 合成任务 1/10/20ms 跑 10min 误差 ≤1 周期、missed 0、tick 单调、同点到期顺序正确；回绕 host 测试 |
 | P3 | 核心通信：ring_buffer+uart1_transport（有界 service）+frame_codec+host 单测 | Host 10000 帧无丢/越界/死循环；板端回环 60s 或 1000 帧 rx_overflow=0 序号连续；UART0/1 不混流；有界 service 不饿死控制 |
@@ -428,7 +428,7 @@ UART1：rx_overflow_count==0；TX 队列背压次数可记录，不直接失败
   - **状态码（完整）**：`0x00 OK / 0x01 BAD_LENGTH / 0x02 BAD_PAYLOAD / 0x03 UNSUPPORTED_TYPE / 0x04 INVALID_STATE / 0x05 BUSY / 0x06 SEQ_CONFLICT / 0x07 SAFETY_REJECTED`。
   - K230 断电 >500ms 无有效心跳→停机。
 - **E2 航向控制与云台随动**：输入=左右轮速差+gyro_z+短期 yaw_rel（先角速度阻尼后相对航向）；模式依赖见第五节。
-- **E3 80MHz 优化**：仅当控制任务超期/外设周期不满足/赛题计算量增大/用户明确要求才启用；HFXT+SYSPLL+**FCC 校验**；启用后重验 PWM/UART/I2C/节拍。
+- **E3 性能/功耗/编译优化**：80MHz 时钟基线已于 P1 收口（2026-08-29）转入正式基线（HFXT 40MHz+SYSPLL，`control.syscfg`），**不再是可选优化**。E3 现指：编译优化等级评估、功耗剖析、控制环采样率提升等后期优化；如启用 FCC 校验等深度时钟验证也在此阶段。
 - **E4 WWDT 与长期可靠性**：故障注入（符合第五节分级）+ WWDT 最后启用 + 30min 稳定性 + Flash/RAM 记录 + 版本标签。
 
 ## 十四、验证与边界
@@ -465,6 +465,29 @@ UART/I2C/定时器驱动                          → BOARD_TESTED（P10 再共�
 ## 十六、单次任务范围
 
 一次任务只允许：一个实施阶段 / 一个独立模块 / 一个明确 bug / 一组紧密相关测试 / 一项文档同步。开始前输出：分支、阶段、目标、不处理内容、拟改文件、所需硬件参数、可自动测试、需用户上板测试。完成后输出：实际改文件、执行命令、构建结果、host 结果、未验证内容、用户下一步上板操作、建议 commit。
+
+## 十七、模块解耦架构（P2 起强制，2026-08-29 增补）
+
+**目标**：模块高解耦、可按需移植（换 MCU 时主要替换 BSP 层）；**不过度抽象**——禁止动态多态、malloc、复杂函数指针注册体系、空壳接口、未使用的抽象层；优先简单、静态、明确的 C 接口。
+
+**依赖方向（只能向下，禁止反向）**：
+```text
+app → control / estimation / middleware / device drivers → BSP/platform → MSPM0 DriverLib + SysConfig
+```
+
+**平台相关代码隔离**：只有 BSP/platform 层允许 include MSPM0 SDK/DriverLib 头、`ti_msp_dl_config.h`、使用 SysConfig 生成宏、知道 TIMG12/TIMA0/UART0/UART1/I2C0/PAxx 等具体实例、操作寄存器/中断号/GPIO。上层模块禁止出现这些内容。
+
+**公共接口语义化**：上层只见 `timebase_now_ms() / motor_set_duty() / encoder_get_count() / uart_write() / i2c_transfer_blocking()` 等语义接口；不见 `TIMG12 / GPIOA / DEBUG_UART_INST / DL_Timer_* / SysConfig pin 宏`。所有接口明确单位（`_ms/_us/_hz/_rpm/_permille`）。
+
+**scheduler 纯软件可移植（P2）**：不 include MSPM0 SDK、不访问 TIMG12、不自定义硬件 ISR、不依赖 `CPUCLK_FREQ`；只接收逻辑时间 `uint32_t now_ms`。TIMG12 只是 MSPM0 BSP 提供 now_ms 的一种实现。
+
+**TIMG12 中断边界**：只有集中式 `bsp/interrupts.c` 定义真实 ISR（读/确认硬件事件→调用 timebase 极小 ISR-side hook→只维护 tick 状态）；ISR 不跑 scheduler task、不打印、不阻塞、不执行 PI/OLED/协议解析。scheduler 在主循环执行。
+
+**算法模块保持 host 可编译**：scheduler、ring_buffer、frame_codec、PI、姿态估计、状态机、actuator_guard 纯策略部分——一律不得 include MSPM0 SDK。
+
+**时钟基线约束**：80MHz 是 `control.syscfg` 的正式配置；`CPUCLK_FREQ`/PLL/SYSOSC 具体值只允许出现在 BSP/platform、SysConfig 生成接口或启动诊断。**业务模块不得假定或硬编码 80000000**，只用毫秒/Hz/秒等语义化时间接口。
+
+**配置分层不变**：`control.syscfg`（MCU 外设/引脚/时钟）/ `hardware_config.h`（物理参数）/ `project_config.h`（软件策略）/ `app_config.h`（应用选择）；不把 MSPM0 外设实例塞进通用算法配置。
 
 ## 需要你配合
 

@@ -13,6 +13,13 @@
 | GPIO_ERR_* | P1(GPIO/LED) | 待查 | — | P1 阶段核对 |
 | FLASH_ERR_* | 发布/烧录 | 待查 | — | 烧录流程核对 |
 
+## SysConfig warning 书面豁免（P1 80MHz + P1A 预检）
+
+| warning（完整文本前缀） | 诊断来源 | 产生原因 | 官方依据 | 风险评估 | 日期 |
+|---|---|---|---|---|---|
+| `HFXT(/ti/clockTree/pinFunction.js) peripheral.hfxInPin: Solution may have changed` | SysConfig 1.27.1 | 80MHz 时钟树模式下 HFXT 引脚建议器提示（hfxOutPin 同） | mspm0-ccs skill 实测笔记（硬件验证记录）+ 生成头核对 `GPIO_HFXIN=PA5 / GPIO_HFXOUT=PA6` 正确固定 | 低：生成引脚已核对正确；每次重建 build.ps1 门禁自动核对该提示数量 | 2026-08-29 |
+| `TB6612_DIR ... .pin: Solution may have changed`（×5） | SysConfig 1.27.1（仅预检文件） | P1A 预检的 GPIO 由 solver 自动分配，属 DRAFT 语义 | SysConfig 行为说明（未手动 assign 的引脚解算提示） | 低：预检 0 error；正式阶段 assign 具体引脚后此类提示消失 | 2026-08-29 |
+
 ## 阶段门禁
 
 - 编译 + 链接 warning 必须 0；SysConfig error 必须 0；SysConfig warning 原则上 0，确实无法消除须在本表书面豁免（含 warning 全文/诊断号/原因/官方依据/风险），**禁止写"已知可忽略"**。

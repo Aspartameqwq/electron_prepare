@@ -1,0 +1,157 @@
+/**
+ * pin_preflight.syscfg — P1A 全资源可解性预检（NON_BUILDING_REFERENCE）
+ *
+ * ┌────────────────────────────────────────────────────────────────────────┐
+ * │  NON_BUILDING_REFERENCE — DO_NOT_ADD_TO_CCS_PROJECT                     │
+ * │  本文件只用于 SysConfig 共存预检，不参与 firmware 构建；                  │
+ * │  正式配置唯一来源 = firmware/control.syscfg（当前仅含已实施外设）。      │
+ * └────────────────────────────────────────────────────────────────────────┘
+ *
+ * 派生自 80MHz 基线 control.syscfg，一次性加入 PLAN.md §三 的全部核心资源：
+ *   TIMG12(1ms tick) TIMA0(双电机 20kHz) TIMG6(双舵机 50Hz) UART0 UART1
+ *   I2C0(OLED+MPU6050) 左右编码器 A/B GPIO TB6612 方向+STBY GPIO PB22 LED SWD
+ *
+ * 引脚策略（预检语义）：除板级固定（PA5/6 晶振、PA10/11 CH340、PB22 LED、
+ * PB6/7 UART1、SWD）外，DRAFT 引脚**不手动 assign**，交由 SysConfig solver
+ * 求解并避开冲突；通过后把 solver 输出抄录进 docs/PINMAP.md DRAFT 行。
+ *
+ * @cliArgs --device "MSPM0G3507" --package "LQFP-64(PM)" --product "mspm0_sdk@2.10.00.04"
+ * @versions {"tool":"1.27.1+4634"}
+ */
+const SYSCTL = scripting.addModule("/ti/driverlib/SYSCTL");
+const Board  = scripting.addModule("/ti/driverlib/Board", {}, false);
+
+/* ---- 时钟树：与 control.syscfg 80MHz 基线一致 ---- */
+SYSCTL.clockTreeEn = true;
+const udiv = system.clockTree["UDIV"];       udiv.divideValue = 2;
+const exhfmux = system.clockTree["EXHFMUX"]; exhfmux.inputSelect = "EXHFMUX_XTAL";
+const syspllmux = system.clockTree["SYSPLLMUX"]; syspllmux.inputSelect = "zSYSPLLMUX_HFCLK";
+const hsclkmux = system.clockTree["HSCLKMUX"];   hsclkmux.inputSelect = "HSCLKMUX_SYSPLL2X";
+const hfxt = system.clockTree["HFXT"];
+hfxt.inputFreq = 40; hfxt.enable = true; hfxt.HFCLKMonitor = true; hfxt.HFXTStartup = 20;
+
+/* ---- 板级固定 ---- */
+Board.peripheral.$suggestSolution = "DEBUGSS";
+Board.peripheral.swclkPin.$suggestSolution = "PA20";
+Board.peripheral.swdioPin.$suggestSolution = "PA19";
+hfxt.peripheral.$suggestSolution = "SYSCTL";
+
+/* ---- 已实施（P1）：PB22 LED + UART0/CH340（板级固定） ---- */
+const LED = scripting.addModule("/ti/driverlib/GPIO", {}, false);
+const LED1 = LED.addInstance();
+LED1.$name = "LED";
+LED1.associatedPins.create(1);
+LED1.associatedPins[0].$name = "PIN";
+LED1.associatedPins[0].ioStructure = "SD";
+LED1.associatedPins[0].assignedPort = "PORTB";
+LED1.associatedPins[0].assignedPin = "22";
+LED1.associatedPins[0].pin.$assign = "PB22";
+LED1.associatedPins[0].initialValue = "CLEARED";
+
+const UART = scripting.addModule("/ti/driverlib/UART", {}, false);
+const UART0 = UART.addInstance();
+UART0.$name = "DEBUG_UART";
+UART0.targetBaudRate = 115200;
+UART0.peripheral.$assign = "UART0";
+UART0.peripheral.txPin.$assign = "PA10";
+UART0.peripheral.rxPin.$assign = "PA11";
+UART0.txPinConfig.$name = "ti_driverlib_gpio_debug_tx";
+UART0.txPinConfig.enableConfig = true;
+UART0.txPinConfig.internalResistor = "PULL_UP";
+UART0.rxPinConfig.$name = "ti_driverlib_gpio_debug_rx";
+UART0.rxPinConfig.enableConfig = true;
+UART0.rxPinConfig.internalResistor = "PULL_UP";
+
+/* ---- P2：TIMG12 = 1ms 系统节拍（P2 依赖门禁：TIMG12 可分配） ---- */
+const TIMER = scripting.addModule("/ti/driverlib/TIMER", {}, false);
+const TICK = TIMER.addInstance();
+TICK.$name = "SYS_TICK";
+TICK.timerMode = "PERIODIC";
+TICK.timerPeriod = "1 ms";
+TICK.peripheral.$assign = "TIMG12";
+TICK.interrupts = ["ZERO"];
+
+/* ---- P3：UART1 = K230/HC-04（PB6=TX / PB7=RX，PLAN 板级约定） ---- */
+const UART1 = UART.addInstance();
+UART1.$name = "PROTO_UART";
+UART1.targetBaudRate = 115200;
+UART1.peripheral.$assign = "UART1";
+UART1.peripheral.txPin.$assign = "PB6";
+UART1.peripheral.rxPin.$assign = "PB7";
+
+/* ---- P4：TIMA0 = 双电机 PWM 20kHz（独立边沿对齐；禁互补/deadband/fault） ----
+ * 引脚 DRAFT：交 solver（避开 PA5/6/10/11/19/20/21/23/02/18） */
+const PWM = scripting.addModule("/ti/driverlib/PWM", {}, false);
+const MOTO = PWM.addInstance();
+MOTO.$name = "MOTOR_PWM";
+MOTO.timerStartTimer = false;                 /* 计划门禁：初始化后不得自动启动 */
+MOTO.timerCount = 4000;                       /* 80MHz/4000 = 20kHz */
+MOTO.peripheral.$assign = "TIMA0";
+MOTO.peripheral.ccp0Pin.$assign = "PA8";      /* SDK tima_dead_band 官方组合 */
+MOTO.peripheral.ccp1Pin.$assign = "PB9";      /* SDK tima_dead_band 官方组合 */
+
+/* ---- P5：编码器 GPIO（左右各 A/B；A 相 RISE 中断 X1，B 相输入判向）----
+ * 子 pin 名全局唯一（LA/LB/RA/RB）；引脚 DRAFT 交 solver */
+const ENC = scripting.addModule("/ti/driverlib/GPIO", {}, false);
+const ENCL = ENC.addInstance();
+ENCL.$name = "ENC_L";
+ENCL.associatedPins.create(2);
+ENCL.associatedPins[0].$name = "LA";
+ENCL.associatedPins[0].pin.$assign = "PA24";
+ENCL.associatedPins[0].direction = "INPUT";
+ENCL.associatedPins[0].interruptEn = true;
+ENCL.associatedPins[0].polarity = "RISE";     /* X1：仅 A 相中断 */
+ENCL.associatedPins[1].$name = "LB";
+ENCL.associatedPins[1].pin.$assign = "PA25";
+ENCL.associatedPins[1].direction = "INPUT";   /* B 相无中断 */
+
+const ENCR = ENC.addInstance();
+ENCR.$name = "ENC_R";
+ENCR.associatedPins.create(2);
+ENCR.associatedPins[0].$name = "RA";
+ENCR.associatedPins[0].pin.$assign = "PA26";
+ENCR.associatedPins[0].direction = "INPUT";
+ENCR.associatedPins[0].interruptEn = true;
+ENCR.associatedPins[0].polarity = "RISE";
+ENCR.associatedPins[1].$name = "RB";
+ENCR.associatedPins[1].pin.$assign = "PA27";
+ENCR.associatedPins[1].direction = "INPUT";
+
+/* ---- P4：TB6612 方向 GPIO ×4 + STBY（初始低；STBY 须外部下拉，P4 硬门禁）----
+ * 引脚 DRAFT 交 solver */
+const TB = scripting.addModule("/ti/driverlib/GPIO", {}, false);
+const TBC = TB.addInstance();
+TBC.$name = "TB6612_DIR";
+TBC.associatedPins.create(5);
+TBC.associatedPins[0].$name = "AIN1";
+TBC.associatedPins[0].initialValue = "CLEARED";
+TBC.associatedPins[1].$name = "AIN2";
+TBC.associatedPins[1].initialValue = "CLEARED";
+TBC.associatedPins[2].$name = "BIN1";
+TBC.associatedPins[2].initialValue = "CLEARED";
+TBC.associatedPins[3].$name = "BIN2";
+TBC.associatedPins[3].initialValue = "CLEARED";
+TBC.associatedPins[4].$name = "STBY";
+TBC.associatedPins[4].initialValue = "CLEARED";   /* STBY 上电低（安全默认） */
+
+/* ---- P7：TIMG6 = 双舵机 50Hz（80MHz/8/200=50kHz；count=1000 → 50Hz）----
+ * 引脚 DRAFT 交 solver（PA12/PA13 不在 TIMG6 可用集，前轮预检已证实） */
+const SERVO = PWM.addInstance();
+SERVO.$name = "SERVO_PWM";
+SERVO.peripheral.ccp0Pin.$assign = "PA17";    /* 嘉立创 TB6612 本板例程组合 */
+SERVO.peripheral.ccp1Pin.$assign = "PA16";    /* 嘉立创 TB6612 本板例程组合 */
+SERVO.timerStartTimer = false;
+SERVO.timerCount = 1000;                      /* 50kHz/1000 = 50Hz（1ms=50 计数） */
+SERVO.clockDivider = 8;
+SERVO.clockPrescale = 199;                    /* (prescale+1)=200 */
+SERVO.peripheral.$assign = "TIMA1";
+
+/* ---- P8/P9：I2C0 = OLED(0x3C) + MPU6050(0x68)，100k 起步 ----
+ * 引脚 DRAFT 交 solver（注意 PB2/PB3 属 I2C0 的合法集需由 solver 确认） */
+const I2C = scripting.addModule("/ti/driverlib/I2C", {}, false);
+const I2C0 = I2C.addInstance();
+I2C0.$name = "SENS_I2C";
+I2C0.basicEnableController = true;
+I2C0.peripheral.$assign = "I2C0";
+I2C0.peripheral.sdaPin.$assign = "PA0";
+I2C0.peripheral.sclPin.$assign = "PA1";
