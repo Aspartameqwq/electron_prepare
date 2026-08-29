@@ -187,28 +187,52 @@ def check_review_content(rid, rpath, want_sha) -> int:
 
 
 def check_absolute_paths() -> int:
-    """扫描仓库文本文件中的绝对路径（剥离 URL，豁免规则文档）。"""
+    """扫描仓库文本文件中的绝对路径（剥离 URL，豁免规则文档）。
+
+    范围：治理文档（SCAN_GLOBS）+ git 跟踪的工程/配置文件（.project/.ccsproject/
+    .cproject/.syscfg/.projectspec/.ccxml）——工程文件含盘符路径会破坏异地可移植性。
+    """
     fails = 0
     hits = []
+    tracked_proj = []
+    try:
+        import subprocess
+        r = subprocess.run(
+            ["git", "ls-files"],
+            cwd=ROOT, capture_output=True, text=True, encoding="utf-8", errors="replace",
+        )
+        proj_suffixes = (".project", ".ccsproject", ".cproject", ".syscfg", ".projectspec", ".ccxml")
+        tracked_proj = [f for f in r.stdout.splitlines() if f.endswith(proj_suffixes)]
+    except OSError:
+        pass
+    targets = set()
     for p in ROOT.rglob("*"):
-        if p.is_dir() or p.name in EXEMPT_RULE_DOCS:
+        if p.is_dir():
+            continue
+        if p.name in EXEMPT_RULE_DOCS:
             continue
         rel_parts = p.relative_to(ROOT).parts
         if any(rel_parts[0] == s for s in SKIP_DIR_PREFIXES):
             continue
         if any(p.name.endswith(g.lstrip("*")) for g in SCAN_GLOBS):
-            rel = p.relative_to(ROOT).as_posix()
-            try:
-                text = p.read_text(encoding="utf-8", errors="replace")
-            except OSError:
-                continue
-            for line_no, raw in enumerate(text.splitlines(), 1):
-                line = URL_RE.sub("", raw)              # 剥离 URL
-                for pat in ABS_PATH_RE:
-                    if pat.search(line):
-                        hits.append(f"{rel}:{line_no}: {raw.strip()[:120]}")
-                        fails += 1
-                        break
+            targets.add(p)
+    for rel in tracked_proj:
+        targets.add(ROOT / rel)
+    for p in targets:
+        if not p.is_file():
+            continue
+        rel = p.relative_to(ROOT).as_posix()
+        try:
+            text = p.read_text(encoding="utf-8", errors="replace")
+        except OSError:
+            continue
+        for line_no, raw in enumerate(text.splitlines(), 1):
+            line = URL_RE.sub("", raw)              # 剥离 URL
+            for pat in ABS_PATH_RE:
+                if pat.search(line):
+                    hits.append(f"{rel}:{line_no}: {raw.strip()[:120]}")
+                    fails += 1
+                    break
     for h in hits:
         print(f"ABS-PATH: {h}")
     if fails:

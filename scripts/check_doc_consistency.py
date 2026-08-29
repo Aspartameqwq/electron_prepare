@@ -57,6 +57,37 @@ def main() -> int:
                  or "规范层.*mspm0-ccs" in text_readme)
     check(not bad_skill, "skill 不再被描述为规范层（应为可选辅助）")
 
+    # 5. 阶段状态跨文档一致性（STATUS 为准，README/PLAN 不得声明冲突状态）
+    text_status = (ROOT / "docs" / "STATUS.md").read_text(encoding="utf-8")
+    status_map = {}
+    for line in text_status.splitlines():
+        m = re.match(r"\| (P\d+[A-Z]?) \| \*\*(NOT_STARTED|IN_PROGRESS|COMPLETED|SOFTWARE_READY|BLOCKED|FAILED)\*\*", line)
+        if m:
+            status_map[m.group(1)] = m.group(2)
+    for phase, st in sorted(status_map.items()):
+        for fname, text in (("README.md", text_readme), ("PLAN.md", text_plan)):
+            # 同一阶段在其他文档被声明为不同终态时失败（PLAN 阶段表无状态声明，只查 "P1:"/"P1=" 形式）
+            conflicting = [c for c in re.findall(
+                rf"{phase}\s*[:：=]\s*\*{{0,2}}(NOT_STARTED|IN_PROGRESS|COMPLETED|SOFTWARE_READY|BLOCKED|FAILED)",
+                text) if c != st]
+            if conflicting:
+                check(False, f"{fname} 中 {phase} 声明 {conflicting} 与 STATUS({st}) 冲突")
+            else:
+                check(True, f"{phase}={st} 在 {fname} 无冲突声明")
+
+    # 6. 过时断言检测（阶段推进后不得残留"尚无/未存在"类矛盾句）
+    stale_patterns = [
+        (r"无 CCS 最小工程", "声称无 CCS 工程（P1 已建）"),
+        (r"尚未形成可编译工程", "声称 firmware 尚未形成可编译工程（已可编译）"),
+        (r"无 `?control\.syscfg`?", "声称无 control.syscfg（已存在）"),
+    ]
+    for fname, text in (("STATUS.md", text_status), ("README.md", text_readme)):
+        for pat, desc in stale_patterns:
+            if re.search(pat, text):
+                check(False, f"{fname}: 过时断言 — {desc}")
+            else:
+                check(True, f"{fname}: 无过时断言（{pat}）")
+
     return 1 if fails else 0
 
 
