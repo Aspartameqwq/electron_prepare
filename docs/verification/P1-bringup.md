@@ -17,7 +17,7 @@
 | debugger | XDS110（外部 SWD，USB 0451:BEF3） |
 | build result | **BUILD OK**（`scripts/build.ps1 -Clean`：退出码门禁 + SysConfig 0 error/2 豁免 warning + 编译器 0 error/0 warning + 新 .out） |
 | flash result | **FLASH OK**（`scripts/flash.ps1` DSLite 后端：load+verify+run，退出码 0） |
-| user board verification | **待用户冷启动×3**（见下） |
+| user board verification | **Agent 上板检测通过（2026-08-29）**：XDS110 远程 **System Reset ×3**（`p1_80mhz_cold1/2/3.txt`）——每轮 banner 恰好一次、`CPUCLK=80000000 Hz` 一致、LED 心跳、无执行器输出。**注意**：System Reset 非物理断电冷启动（rst=SYS_DEBUG 可证）；**POR 级冷启动×3 待用户断电操作确认**（通过标准不变） |
 | test date | 2026-08-29 |
 | UART banner 摘要 | `fw v0.1.0 / app LED_BRINGUP(id=1) / clk CPUCLK=80000000 Hz / rst SYS_DEBUG`（`logs/tmp/p1_80mhz_rst1.txt`） |
 | LED result | 心跳运行中（System Reset×1 后目视连续闪烁） |
