@@ -15,9 +15,7 @@
 | 勘误号 | 涉及阶段 | 当前状态 | 检查日期 | 依据 / 备注 |
 |---|---|---|---|---|
 | **SYSPLL_ERR_01** | P1 | **HANDLED_BY_SDK** | 2026-08-29 | SLAZ742H：SYSPLL 使能时可能锁错频，官方 workaround＝用 FCC 监测 SYSPLL 频率，检测到错误则 disable/re-enable SYSPLL。**本地证据**：① `source/ti/driverlib/.meta/sysctl/SYSCTLMSPM0Clocks.js`（SysConfig SYSCTL 时钟配置）`enableWorkaround_SYSPLL_ERR_01` **默认 true**（displayName "Validate SYSPLL Frequency Lock"）；② `source/ti/driverlib/.meta/Common.js` `isdeviceAffected_SYSPLL_ERR_01()` 对所有 MSPM0 返回 true；③ 生成代码 `firmware/Debug/syscfg/ti_msp_dl_config.c` L108-199：`SYSCFG_DL_SYSCTL_SYSPLL_init()`（FCC 测 SYSPLLCLK2X 与 HFCLK 相对 LFCLK 计数 → 比例界检查 `FCC_EXPECTED_RATIO=2000`（=80/40）±0.3%）+ `SYSCFG_DL_SYSCTL_init()` 内 `[SYSPLL_ERR_01]` 注释的失败 toggle 重锁循环。本项目未覆盖该 WEAK 函数、未改生成文件 → **运行时佐证：P1 clean build 后 80MHz System Reset ×3 均正常启动**；升 `VERIFIED` 待用户 POR 冷启动×3 后由所有者确认 |
-| **FLASH_ERR_01** | P1 | **该编号不存在** | 2026-08-29 | SLAZ742H 全文 FLASH 系列实测为 **02/04/05/06/08**，无 `FLASH_ERR_01`（早期记录的编号有误，现澄清）。用户关注的"80MHz 升频前 flash 处理"由下列各行覆盖：等待状态在升频前置位（HANDLED_BY_SDK）、FLASH_ERR_05（Factory Trim 区假读，可忽略）、≥32MHz 状态位清理（SDK info） |
-| **FLASH 等待状态（80MHz）** | P1 | **HANDLED_BY_SDK** | 2026-08-29 | SysConfig 生成 `DL_SYSCTL_setFlashWaitState(DL_SYSCTL_FLASH_WAIT_STATE_2)` 于 `SYSCFG_DL_SYSCTL_init()` **第一处、在 SYSPLL 使能/MCLK 切 80MHz 之前**（`ti_msp_dl_config.c` L172），满足 80MHz 所需 2 wait states（`dl_sysctl_mspm0g1x0x_g3x0x.h` `DL_SYSCTL_FLASH_WAIT_STATE` 枚举）；boot 期仍处 SYSOSC 32MHz 安全区间。P1 不执行 flash 写/擦，无需其他处理 |
-| **≥32MHz flash 状态位（非勘误，SysConfig info）** | P1 | **应用不触发** | 2026-08-29 | SysConfig 对 ≥32MHz 配置输出官方提示："For best practices when the CPUCLK is running at 32MHz and above, clear the flash status bit using DL_FlashCTL_executeClearStatus() before executing any flash operation. Otherwise there may be false positives."（见 `logs/tmp/build.log`）。P1 无 flash 编程/擦除操作，不触发；P4 及以后写/擦 flash 前按此执行 |
+| **FLASH 等待状态（80MHz）** | P1 | **HANDLED_BY_SDK** | 2026-08-29 | SysConfig 生成 `DL_SYSCTL_setFlashWaitState(DL_SYSCTL_FLASH_WAIT_STATE_2)` 于 `SYSCFG_DL_SYSCTL_init()` **第一处、在 SYSPLL 使能/MCLK 切 80MHz 之前**（`ti_msp_dl_config.c` L172），满足 80MHz 所需 2 wait states（`dl_sysctl_mspm0g1x0x_g3x0x.h` `DL_SYSCTL_FLASH_WAIT_STATE` 枚举）；boot 期仍处 SYSOSC 32MHz 安全区间。P1 不执行 flash 写/擦，无需其他处理。相关非勘误注意事项见下方"SDK / SysConfig 非勘误注意事项"与"历史纠错 / 编号澄清" |
 | FLASH_ERR_02 | P1 | **NOT_RELEVANT** | 2026-08-29 | 仅当 NONMAIN 配 `DEBUGACCESS=0x5566`（debug disable）才涉及；本项目不改 NONMAIN（flash.ps1 亦注明不得默认擦除/修改 NONMAIN） |
 | FLASH_ERR_04 | P1 | **NOT_RELEVANT** | 2026-08-29 | 仅 flash ECC 错误地址报告（DEDERRADDR）错误场景；P1 不实现 flash 错误处理 |
 | FLASH_ERR_05 | P1 | **NOT_RELEVANT** | 2026-08-29 | `DEDERRADDR` 复位值可为 `0x00C4013C`（位置在 Factory Trim 区，**可安全忽略**）；P1 不读 DEDERRADDR、无 flash 错误处理 |
@@ -57,6 +55,14 @@
 | WWDT_ERR_01/02 | E4 | NOT_RELEVANT | 2026-08-29 | WWDT 未启用（E4 才启用） |
 | ADC/COMP/DAC/DMA/SPI/CRCP/MATHACL/VREF/PMCU/PWREN/RTC 系 | P4/P8/E 各阶段 | NOT_RELEVANT | 2026-08-29 | P1 未使用；对应阶段纳入时按 SLAZ742H 核对 |
 
+## 历史纠错 / 编号澄清
+
+- **FLASH_ERR_01：历史误编号，SLAZ742H 无该条目**（2026-08-29 全文核对：FLASH 系列实测为 02/04/05/06/08）。早期记录曾以"FLASH_ERR_01 = 待查/该编号不存在"出现在状态表中——编号不存在时**不得**占用勘误状态表（状态列只有 4 个合法值），澄清记录放本节。用户关注的"80MHz 升频前 flash 处理"由状态表"FLASH 等待状态（80MHz）"行 + FLASH_ERR_02/04/05/06/08 各行覆盖。
+
+## SDK / SysConfig 非勘误注意事项
+
+- **≥32MHz flash 状态位（SysConfig info，非勘误）**：SysConfig 对 ≥32MHz 配置输出官方 best-practice 提示："For best practices when the CPUCLK is running at 32MHz and above, clear the flash status bit using DL_FlashCTL_executeClearStatus() before executing any flash operation. Otherwise there may be false positives."（`logs/tmp/build.log` 可见）。P1 无 flash 编程/擦除操作，不触发；P4 及以后写/擦 flash 前按此执行。非勘误，不占状态表。
+
 ## SysConfig warning 白名单（精确匹配，新增即 BUILD FAILED）
 
 - **正式构建**（`scripts/build.ps1` 对 `firmware/control.syscfg`）：error=0；warning **必须精确等于 2 条 HFXT**（`HFXT(/ti/clockTree/pinFunction.js) peripheral.hfxInPin/hfxOutPin: Solution may have changed`），逐行命中白名单，出现任意新增 warning 即 BUILD FAILED。**加大写：禁止"已知可忽略"类豁免。**
@@ -65,6 +71,7 @@
 
 ## 阶段门禁
 
-- 编译 + 链接 warning 必须 0；SysConfig error 必须 0；SysConfig warning 白名单**精确匹配**（见上）；新增任意 warning 即 BUILD FAILED，禁止写"已知可忽略"。
-- 每个阶段开始时：按"只查当前用到的功能"更新本表（依据 SLAZ742H）。
+- **warning → 构建失败由工具链强制**（2026-08-31 起）：compiler `-Werror`（tiarmclang 4.0.4.LTS 实测验证）+ linker `--emit_warnings_as_errors`（tiarmlnk help 确认、实测同类诊断转 error 且不产出 .out），均入 `firmware/p1_bringup.projectspec`；`scripts/build.ps1` 的日志解析（`warning:` / `warning #NNNN-D:` 等）仅作**第二层审计**，非唯一 warning 门禁。
+- 编译 + 链接 warning 必须 0；SysConfig error 必须 0；SysConfig warning 白名单**精确集合匹配**（HFXT hfxInPin=1 + hfxOutPin=1，缺失/重复/新增/summary 不可解析均 BUILD FAILED），禁止写"已知可忽略"。
+- 每个阶段开始时：按"只查当前用到的功能"更新本表（依据 SLAZ742H）；状态列只允许 4 个合法值（`NOT_RELEVANT`/`HANDLED_BY_SDK`/`APPLICATION_WORKAROUND_REQUIRED`/`VERIFIED`），非勘误信息与编号澄清放对应小节，不占状态表。
 - v1 明确**不进入** STOP/STANDBY/SHUTDOWN 低功耗模式（避免引入额外恢复问题）。

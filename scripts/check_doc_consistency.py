@@ -113,10 +113,31 @@ def main() -> int:
         check(False, "ERRATA_CHECKLIST 表内仍以 '待查' 作状态（P1 全部按使用核查完毕）")
     else:
         check(True, "ERRATA_CHECKLIST 无 '待查' 状态残留")
-    if "新增任意 warning 即 BUILD FAILED" in text_errata:
-        check(True, "ERRATA 保留 SysConfig warning 精确白名单门禁措辞")
+    if "## SysConfig warning 白名单" in text_errata and "精确" in text_errata.split("## SysConfig warning 白名单", 1)[1].split("##", 1)[0] \
+            and '禁止写"已知可忽略"' in text_errata:
+        check(True, "ERRATA 保留 SysConfig warning 精确白名单门禁节（精确匹配 + 禁止'已知可忽略'）")
     else:
-        check(False, "ERRATA 缺少 SysConfig warning 精确白名单门禁措辞")
+        check(False, "ERRATA 缺少 SysConfig warning 精确白名单门禁节（需含 精确 匹配语义与禁止'已知可忽略'）")
+
+    # 7b. ERRATA 状态表 schema：状态列只允许 4 个合法值
+    LEGAL_ERRATA_STATES = {"NOT_RELEVANT", "HANDLED_BY_SDK", "APPLICATION_WORKAROUND_REQUIRED", "VERIFIED"}
+    errata_status_bad = []
+    for line in text_errata.splitlines():
+        if not line.lstrip().startswith("|"):
+            continue
+        cells = [c.strip() for c in line.strip().strip("|").split("|")]
+        if len(cells) < 3 or set(cells) <= {"---"} or cells[0] in ("勘误号",):
+            continue
+        status = cells[2]
+        status_clean = re.sub(r"\*\*", "", status)
+        status_clean = re.sub(r"（[^）]*）", "", status_clean).strip()
+        if status_clean not in LEGAL_ERRATA_STATES:
+            errata_status_bad.append(f"{cells[0]}: '{status}'")
+    if errata_status_bad:
+        check(False, "ERRATA 状态表出现非法状态值（只允许 NOT_RELEVANT/HANDLED_BY_SDK/APPLICATION_WORKAROUND_REQUIRED/VERIFIED）："
+              + "; ".join(errata_status_bad[:6]))
+    else:
+        check(True, "ERRATA 状态表全部为 4 个合法状态值")
 
     # 8. P1 实际使用 SYSPLL(HFXT+SYSPLL→80MHz)：ERRATA 中 SYSPLL_ERR_01 不得标 NOT_RELEVANT
     if "SYSPLL_ERR_01" not in text_errata:
