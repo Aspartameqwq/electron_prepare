@@ -6,6 +6,15 @@
     - 工程就地引用 firmware/ 下源文件（action="link"，不复制），目录即仓库结构；
     - SysConfig 由工程构建自动调用（sysConfigBuildOptions），产物进 Debug/syscfg；
     - control.syscfg 为唯一事实源；Debug/ 构建产物不入 git（.gitignore）。
+    - warning 门禁（选项均经本机锁定工具链实测验证）：
+        compiler 用 Werror，经 firmware/gate.opt 响应文件传入（内容仅一行 -Werror；
+        tiarmclang 的 @file 不支持注释行）。为何用响应文件：CCS TICLANG 工程模型会把
+        projectspec compilerBuildOptions 中的裸 Werror 丢弃（tooldef 将其建模为布尔
+        WERRORALL 与列表 Werror= 两种形式），而 @file 由 tiarmclang 自身展开、与既有
+        device.opt 同机制，实测 warning 转 error 退出码 1；
+        linker 用 emit_warnings_as_errors（tiarmlnk help 确认别名 pdew "Treat warnings as
+        errors"，经 Wl, 前缀透传成功，实测同类诊断 warning 转 error 且不产出 .out）。
+        scripts/build.ps1 的日志解析仅作第二层审计，非唯一 warning 门禁。
 -->
 <projectSpec>
     <applicability>
@@ -30,6 +39,7 @@
             -I${PROJECT_ROOT}/${ConfigName}/syscfg
             -O2
             @${PROJECT_ROOT}/${ConfigName}/syscfg/device.opt
+            @${PROJECT_ROOT}/gate.opt
             -I${COM_TI_MSPM0_SDK_INSTALL_DIR}/source/third_party/CMSIS/Core/Include
             -I${COM_TI_MSPM0_SDK_INSTALL_DIR}/source
             -gdwarf-3
@@ -47,6 +57,7 @@
             -L${PROJECT_BUILD_DIR}/syscfg
             -Wl,--rom_model
             -Wl,--warn_sections
+            -Wl,--emit_warnings_as_errors
             -Wl,--diag_suppress=10234-D
             -L${CG_TOOL_ROOT}/lib
             -llibc.a

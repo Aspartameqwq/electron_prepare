@@ -92,8 +92,11 @@ foreach ($line in (Get-Content $LOG)) {
         if ($line -match $w.pat) { $patCounts[$w.name]++; $whitelisted = $true; break }
     }
     if ($whitelisted) { continue }
-    if ($line -match '(^|\s)warning:\s') { $unknownWarn++ }
-    if ($line -match '(^|\s)error:\s')   { $compilerErr++ }
+    # Second-layer audit ONLY (warnings-as-errors options are the primary gate):
+    # matches clang-style "warning: ..." AND TI numeric diagnostics "warning #10247-D: ..."
+    # (linker emits the latter; the leading space/line-start keeps prose out).
+    if ($line -match '(^|\s)warning:\s' -or $line -match '(^|\s)warning\s+#\d+(-[A-Z])?:') { $unknownWarn++ }
+    if ($line -match '(^|\s)error:\s'   -or $line -match '(^|\s)error\s+#\d+(-[A-Z])?:')   { $compilerErr++ }
 }
 
 $scWarnFailures = @()
