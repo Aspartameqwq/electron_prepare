@@ -11,9 +11,13 @@
  *   TIMG12(1ms tick) TIMA0(双电机 20kHz) TIMA1(双舵机 50Hz) UART0 UART1
  *   I2C0(OLED+MPU6050) 左右编码器 A/B GPIO TB6612 方向+STBY GPIO PB22 LED SWD
  *
- * 引脚策略（预检语义）：除板级固定（PA5/6 晶振、PA10/11 CH340、PB22 LED、
- * PB6/7 UART1、SWD）外，DRAFT 引脚**不手动 assign**，交由 SysConfig solver
- * 求解并避开冲突；通过后把 solver 输出抄录进 docs/PINMAP.md DRAFT 行。
+ * 引脚策略（预检语义，P1A 实际流程）：
+ *   1) 候选组合由 SysConfig solver / SDK 官方例程 / 板级约束共同确定；
+ *   2) P1A 选定候选解后，在 NON_BUILDING preflight 中**显式 assign** 到具体引脚
+ *      （本文件所示：HFXT/UART1/TIMA0/编码器/TIMA1(舵机)/I2C0 均为已选定 DRAFT 组合）；
+ *   3) 求解通过后把结果抄录进 docs/RESOURCE_MAP.md 与 docs/PINMAP.md（DRAFT 行）；
+ *   4) 对应阶段硬件接线确认后，才把同一 assign 写入正式 control.syscfg 并标 FROZEN
+ *      （PLAN.md §二 冻结流程）。
  *
  * @cliArgs --device "MSPM0G3507" --package "LQFP-64(PM)" --product "mspm0_sdk@2.10.00.04"
  * @versions {"tool":"1.27.1+4634"}

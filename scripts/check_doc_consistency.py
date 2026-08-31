@@ -40,6 +40,8 @@ def main() -> int:
     text_claude = (ROOT / "CLAUDE.md").read_text(encoding="utf-8")
     text_status = (ROOT / "docs" / "STATUS.md").read_text(encoding="utf-8")
     text_errata = (ROOT / "docs" / "ERRATA_CHECKLIST.md").read_text(encoding="utf-8")
+    text_resmap = (ROOT / "docs" / "RESOURCE_MAP.md").read_text(encoding="utf-8")
+    text_preflight = (ROOT / "docs" / "preflight" / "pin_preflight.syscfg").read_text(encoding="utf-8")
 
     # 1. v7.1 残留
     bad = []
@@ -113,6 +115,38 @@ def main() -> int:
         check(True, "ERRATA 保留 SysConfig warning 精确白名单门禁措辞")
     else:
         check(False, "ERRATA 缺少 SysConfig warning 精确白名单门禁措辞")
+
+    # 8. P1 实际使用 SYSPLL(HFXT+SYSPLL→80MHz)：ERRATA 中 SYSPLL_ERR_01 不得标 NOT_RELEVANT
+    if "SYSPLL_ERR_01" not in text_errata:
+        check(False, "ERRATA 缺少 SYSPLL_ERR_01 条目（P1 使用 SYSPLL）")
+    elif re.search(r"SYSPLL_ERR_01[^\n]*\*\*NOT_RELEVANT\*\*", text_errata):
+        check(False, "ERRATA 把 SYSPLL_ERR_01 标为 NOT_RELEVANT（P1 实际使用 SYSPLL）")
+    else:
+        check(True, "ERRATA SYSPLL_ERR_01 未标 NOT_RELEVANT")
+
+    # 9. 舵机定时器资源三处一致：PLAN/RESOURCE_MAP/preflight 均应为 TIMA1（P1A ADR-002）
+    res_ok = True
+    if not re.search(r"TIMA1 \| 双舵机", text_plan):
+        check(False, "PLAN 资源表舵机定时器不是 TIMA1"); res_ok = False
+    if not re.search(r"TIMA1 \| 双舵机", text_resmap):
+        check(False, "RESOURCE_MAP 舵机定时器不是 TIMA1"); res_ok = False
+    if not re.search(r"TIMA1 = 双舵机", text_preflight):
+        check(False, "pin_preflight P7 注释不是 'P7: TIMA1 = 双舵机'"); res_ok = False
+    if re.search(r"\| *TIMG6 \|", text_plan) or re.search(r"P7[^\n]*TIMG6", text_plan):
+        check(False, "PLAN 仍把 TIMG6 作为正式舵机定时器/依赖"); res_ok = False
+    if re.search(r"TIMG6[^\n]*双舵机", text_preflight):
+        check(False, "pin_preflight 仍把 TIMG6 作为双舵机"); res_ok = False
+    if res_ok:
+        check(True, "舵机定时器 = TIMA1 在 PLAN/RESOURCE_MAP/preflight 三处一致")
+
+    # 10. STATUS 阶段三件套（P1=IN_PROGRESS / P1A=COMPLETED / P2=NOT_STARTED）
+    trio_ok = True
+    trio = {"P1": "IN_PROGRESS", "P1A": "COMPLETED", "P2": "NOT_STARTED"}
+    for phase, expected in trio.items():
+        if status_map.get(phase) != expected:
+            check(False, f"STATUS {phase} 应为 {expected}（当前 {status_map.get(phase)}）"); trio_ok = False
+    if trio_ok:
+        check(True, "STATUS 三件套 P1=IN_PROGRESS / P1A=COMPLETED / P2=NOT_STARTED")
 
     return 1 if fails else 0
 
