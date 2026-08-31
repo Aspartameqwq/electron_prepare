@@ -2,8 +2,9 @@
 # Usage: powershell -ExecutionPolicy Bypass -File scripts/build.ps1 [-Clean]
 # Gates (all must pass to return 0):
 #   1) projectCreate/projectBuild exit code = 0
-#   2) SysConfig: 0 error; warning count must EXACTLY equal the approved whitelist (HFXT x2, see docs/ERRATA_CHECKLIST.md);
-#      any new/unknown SysConfig warning or unparseable summary -> BUILD FAILED
+#   2) SysConfig: 0 error; warning set must be an EXACT match of the approved whitelist
+#      (each whitelist pattern must appear exactly once; summary count == whitelist size;
+#       any unknown/duplicated/disappeared warning or unparseable summary -> BUILD FAILED)
 #   3) Compiler/linker: 0 error, 0 warning (matched by real diagnostic format "warning:"/"error:")
 #   4) .out must be freshly produced by THIS build (stale artifact removed before build)
 # Requires: scripts/env.local.ps1 (CCS_HOME / MSPM0_SDK_ROOT; template env.example.ps1)
@@ -28,10 +29,18 @@ $OUT     = Join-Path $DBGDIR 'firmware_p1_bringup.out'
 $LOG     = Join-Path $Repo 'logs/tmp/build.log'
 New-Item -ItemType Directory -Force -Path (Split-Path $LOG) | Out-Null
 
-# ---- 1) kill stale-.out false-success: remove old artifacts before verified build ----
+# ---- 1) stale-.out false-success guard + stale project-import guard ----
 if ($Clean -or (Test-Path $OUT)) {
     if (Test-Path $DBGDIR) { Remove-Item -Recurse -Force $DBGDIR }
     Write-Host 'old build artifacts removed (stale .out guard)'
+}
+# project-import guard: every run uses a UNIQUE workspace (-> fresh derived workspace), so the
+# -ccs.location passed to projectCreate must not carry a prior import. A leftover .project/.cproject/
+# .ccsproject/.settings makes projectCreate fail with "A file or directory already exists at location".
+# These are gitignored and regenerated from p1_bringup.projectspec, so they are always cleared here.
+foreach ($pfx in '.project', '.cproject', '.ccsproject', '.settings') {
+    $p = Join-Path $Repo "firmware/$pfx"
+    if (Test-Path $p) { Remove-Item -Recurse -Force $p }
 }
 
 # ---- 2) create project (idempotent; tolerate "already exists", fail on real errors) ----
@@ -65,37 +74,43 @@ if ($null -eq $scErr -or $null -eq $scWarn) {
 # Compiler/linker diagnostic lines: anything matching warning:/error: that is NOT an approved
 # SysConfig whitelist item counts as a compiler/linker diagnostic (whitelist text goes through
 # the SysConfig summary gate below, not the compiler gate).
-$knownExempt = @(
-    'HFXT\(/ti/clockTree/pinFunction\.js\) peripheral\.hfxInPin: Solution may have changed',
-    'HFXT\(/ti/clockTree/pinFunction\.js\) peripheral\.hfxOutPin: Solution may have changed'
+# EXACT-SET gate: every whitelist pattern must appear EXACTLY once; the SysConfig summary warning
+# count must equal the whitelist size; any non-whitelist warning line => FAIL. A disappearing
+# whitelist warning ALSO fails (forces manual re-review, never silent auto-pass).
+$whitelist = @(
+    @{ name = 'HFXT hfxInPin';
+       pat  = 'HFXT\(/ti/clockTree/pinFunction\.js\) peripheral\.hfxInPin: Solution may have changed' },
+    @{ name = 'HFXT hfxOutPin';
+       pat  = 'HFXT\(/ti/clockTree/pinFunction\.js\) peripheral\.hfxOutPin: Solution may have changed' }
 )
-$compilerWarn = 0; $compilerErr = 0
-$syscfgWarnLines = 0
+$patCounts = @{}
+foreach ($w in $whitelist) { $patCounts[$w.name] = 0 }
+$unknownWarn = 0; $compilerErr = 0
 foreach ($line in (Get-Content $LOG)) {
-    $isExempt = $false
-    foreach ($pat in $knownExempt) { if ($line -match $pat) { $isExempt = $true; break } }
-    if ($isExempt) {
-        $syscfgWarnLines++          # approved SysConfig hint occurrences (whitelist members)
-        continue
+    $whitelisted = $false
+    foreach ($w in $whitelist) {
+        if ($line -match $w.pat) { $patCounts[$w.name]++; $whitelisted = $true; break }
     }
-    if ($line -match '(^|\s)warning:\s') { $compilerWarn++ }
+    if ($whitelisted) { continue }
+    if ($line -match '(^|\s)warning:\s') { $unknownWarn++ }
     if ($line -match '(^|\s)error:\s')   { $compilerErr++ }
 }
 
-# SysConfig warnings must EXACTLY match the approved whitelist:
-#   - whitelist occurrence count must equal the SysConfig summary warning count
-#     (summary==count 时任一未匹配 warning 都会使两者不相等 -> FAIL，无法解析入 summary 的警告不计入)
-#   - any non-exempt warning line (compiler/linker/SysConfig new) -> FAIL (compiler/linker must be 0)
 $scWarnFailures = @()
-if ($syscfgWarnLines -ne $scWarn) {
-    $scWarnFailures += "SysConfig warning count mismatch: summary=$scWarn but whitelist-matched lines=$syscfgWarnLines (new/unknown warnings?)"
+if ($scWarn -ne $whitelist.Count) {
+    $scWarnFailures += "SysConfig summary warnings=$scWarn != whitelist size=$($whitelist.Count) (warning set changed or a whitelist item disappeared?)"
 }
-if ($compilerWarn -gt 0) {
-    $scWarnFailures += "non-whitelist warning lines present: $compilerWarn"
+foreach ($w in $whitelist) {
+    if ($patCounts[$w.name] -ne 1) {
+        $scWarnFailures += "whitelist '$($w.name)' occurrences=$($patCounts[$w.name]) (must be exactly 1; duplicated or missing)"
+    }
+}
+if ($unknownWarn -gt 0) {
+    $scWarnFailures += "non-whitelist warning lines present: $unknownWarn"
 }
 
-Write-Host "SysConfig : error=$scErr warning=$scWarn (whitelist HFXT x2; occurrences matched: $syscfgWarnLines; see docs/ERRATA_CHECKLIST.md)"
-Write-Host "Compiler  : error=$compilerErr warning=$compilerWarn"
+Write-Host "SysConfig : error=$scErr warning=$scWarn (exact-set whitelist: $((($whitelist | ForEach-Object { $_.name + '=' + $patCounts[$_.name] }) -join ', ')); see docs/ERRATA_CHECKLIST.md)"
+Write-Host "Compiler  : error=$compilerErr warning=$unknownWarn"
 
 $fail = @()
 if ($scErr -ne 0)        { $fail += "SysConfig error=$scErr" }
