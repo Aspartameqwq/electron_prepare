@@ -71,9 +71,9 @@ PB6/PB7 在 PINMAP 中须明确谁是 TX 谁是 RX。
 |---|---|---|
 | TIMG12 | 1ms 时间基准 | ISR 只 `g_tick_ms++`（见第六节） |
 | TIMA0 | 左右电机 PWM 20kHz | 两个相互独立边沿对齐通道；默认不启用互补输出/硬件 dead-band/外部 fault；换向由 actuator_guard 软件状态机实现 |
-| TIMG6 | 双舵机 50Hz | 预分频由 SysConfig 算；定时器由 servo_pwm 整体拥有 |
+| TIMA1 | 双舵机 50Hz | 预分频由 SysConfig 算；定时器由 servo_pwm 整体拥有（P1A 决策：TIMG6 在 LQFP-64 唯一 CCP0=PA21 属 DO_NOT_USE，改用 TIMA1 PA17/PA16，见 RESOURCE_MAP 变更记录） |
 | TIMG8 | 可选单轴 HW QEI（默认禁用） | 唯一 QEI 实例，不作双轮默认 |
-| TIMG7/TIMA1 | 备用 | 默认不启用 |
+| TIMG7 | 备用 | 默认不启用 |
 | UART0/PA10-11 | 文本调试日志 | 非阻塞 ≥512B 环形，满丢整行+debug_drop_lines++ |
 | UART1/PB6-7 | 二进制协议（K230/HC-04） | 环形 RX/TX 各 512B，静态分配禁 malloc，波特率链路配置 |
 | I2C0 | OLED + MPU6050 | 100k→400k，同步阻塞+有限超时 |
@@ -84,7 +84,7 @@ PB6/PB7 在 PINMAP 中须明确谁是 TX 谁是 RX。
 ```text
 P2←P1+TIMG12可分配   P3←P2+UART0/1可分配   P4←P1A电机资源+电机参数
 P5←P1A编码器GPIO+编码器参数   P6-SOFTWARE←P4/P5接口已冻结
-P6-BOARD←P4 COMPLETED+P5 COMPLETED   P7←TIMG6资源+舵机参数
+P6-BOARD←P4 COMPLETED+P5 COMPLETED   P7←TIMA1资源+舵机参数
 P8←I2C0资源+OLED硬件   P9←I2C总线过+MPU6050硬件
 ```
 
@@ -191,7 +191,7 @@ void motor_emergency_stop(void);   /* STBY拉低→PWM清零→取消内部待�
 **紧急停止一律 STBY 低，不用 BRAKE。** 同步故障调用 `safety_emergency_stop(reason)` 立即执行，不等待下一个调度周期。
 
 ### PWM 定时器禁止自动启动（P4/P7 门禁）
-TIMA0 与 TIMG6 初始化后**不得自动启动计数器**；所有比较值初始化为 0；PWM 输出默认无效电平。电机由 `motor_enable()` 显式启动；舵机由 `servo_enable(channel)` 显式启用。Agent 只读核对生成 `ti_msp_dl_config.c`，**不手改生成文件**。
+TIMA0 与 TIMA1 初始化后**不得自动启动计数器**；所有比较值初始化为 0；PWM 输出默认无效电平。电机由 `motor_enable()` 显式启动；舵机由 `servo_enable(channel)` 显式启用。Agent 只读核对生成 `ti_msp_dl_config.c`，**不手改生成文件**。
 
 ### STBY 硬件门禁（P4）
 STBY 必须接 MSPM0 GPIO、**必须外部下拉（建议 10kΩ）**、禁止直接接 3.3V。HARDWARE_PROFILE 增 `tb6612_stby_gpio / tb6612_stby_external_pulldown / tb6612_stby_reset_level_measured`。用户须确认：断电测 STBY 与地有下拉；MCU 复位时 STBY 低；烧录期间电机不动；SysConfig STBY 初始输出低。
@@ -352,8 +352,8 @@ integral += ki_per_second * dt_seconds * error;   /* 禁止调用方预先乘采
 - `drivers/servo_pwm` 提供 `init/enable/disable/set_pulse_us/set_target_us/service`；只负责脉宽限幅、变化率限制、输出使能。HOLD/PARK 在应用层。
 - **set_pulse_us vs set_target_us**：`set_pulse_us` 仅供校准/测试，立即更新下一 PWM 周期脉宽、仍受绝对安全限幅；`set_target_us` 正常运行接口，只更新目标值，由 `service()` 按 `max_slew_us_per_s` 渐进接近。
 - 语义补充：未设置有效目标时 `servo_enable()` 返回错误；`disable→enable` 不得自动恢复陈旧目标（除非调用方重新确认）；`service()` 用**实际时间间隔**算最大变化量，不假定正好 20ms；校准模式与正常模式由测试 APP 显式区分。
-- **共享 TIMG6**：定时器模块整体拥有，启动后保持 50Hz；每通道独立 `enabled`；禁用单通道只让该通道进无效电平，**不停共享定时器**；两通道都禁用才允许停。`service()` 每 20ms 最多更新一次脉宽。
-- **禁用实现（P7 必核）**：核对 TIMG6 PWM 极性、compare=0 真实输出；优先用 DriverLib 通道输出禁用机制；若用 compare=0 禁用必须上板验证确实为低；**禁靠停整个定时器禁用单通道**。实现方法记录进 RESOURCE_MAP/验证报告。
+- **共享 TIMA1**：定时器模块整体拥有，启动后保持 50Hz；每通道独立 `enabled`；禁用单通道只让该通道进无效电平，**不停共享定时器**；两通道都禁用才允许停。`service()` 每 20ms 最多更新一次脉宽。
+- **禁用实现（P7 必核）**：核对 TIMA1 PWM 极性、compare=0 真实输出；优先用 DriverLib 通道输出禁用机制；若用 compare=0 禁用必须上板验证确实为低；**禁靠停整个定时器禁用单通道**。实现方法记录进 RESOURCE_MAP/验证报告。
 - **初始探测脉宽**：`servo_probe_pulse_us`（project_config.h），状态 `DATASHEET/USER_CONFIRMED/MEASURED`。只有拆舵盘/断连杆后才允许用常见默认 1500μs；用户有说明书值优先用说明书值。
 - 安全校准：拆舵盘/断连杆→首输 probe 脉宽若堵转/异常**立即断电**→50μs 步进扩展（每步 ≤1s 观察）→实测限位标 MEASURED→写 hardware_config.h。未校准前只允许单一人工确认脉宽，禁自动扫动。驱动初始化后不自动输出；仅测试 APP 用户确认后显式 enable。
 - **P7 host 转换测试**：`pulse_us → timer_compare_count`，覆盖最小/中心/最大脉宽、溢出、舍入、不同预分频。
@@ -386,7 +386,7 @@ i2c_status_t i2c_write_read_blocking(..., uint32_t timeout_ms);
 
 ## 十二、核心实施阶段（P0~P10）
 
-**阶段结果（v7.2 增补）**：`NOT_STARTED`＝未开始；`IN_PROGRESS`＝进行中；`COMPLETED`＝软件+上板验收完成；`SOFTWARE_READY`＝源码+host+构建完成等待硬件（可进不依赖该硬件输出的软件工作，不得进依赖其真实输出的闭环阶段）；`BLOCKED`＝缺硬件/参数/引脚/工具，只阻塞直接依赖阶段；`FAILED`＝现有条件下未通过，先修复。**当前如实状态：P0=COMPLETED（探针证据+治理闭环，2026-08-04），P1/P1A/P2/P3=NOT_STARTED（`ring_buffer`/`frame_codec` 仅为预研资产，release_gate=NOT_MET，见 `docs/STATUS.md`）。**
+**阶段结果（v7.2 增补）**：`NOT_STARTED`＝未开始；`IN_PROGRESS`＝进行中；`COMPLETED`＝软件+上板验收完成；`SOFTWARE_READY`＝源码+host+构建完成等待硬件（可进不依赖该硬件输出的软件工作，不得进依赖其真实输出的闭环阶段）；`BLOCKED`＝缺硬件/参数/引脚/工具，只阻塞直接依赖阶段；`FAILED`＝现有条件下未通过，先修复。**当前如实状态：P0=COMPLETED（探针证据+治理闭环，2026-08-04）、P1A=COMPLETED（全资源预检+DRAFT，2026-08-29）、P1=IN_PROGRESS（80MHz 正式基线已收口，系统复位×3 通过，**待用户 POR 冷启动×3 验收后 COMPLETED**）、P2/P3=NOT_STARTED（`ring_buffer`/`frame_codec` 仅为预研资产，release_gate=NOT_MET，见 `docs/STATUS.md`）。**
 
 | 阶段 | 内容 | 关键验收（基础必做 / 有仪器选做） |
 |---|---|---|
@@ -446,6 +446,7 @@ UART/I2C/定时器驱动                          → BOARD_TESTED（P10 再共�
 发布门槛＝各模块达到上表最低状态 + P10 当前 tested_code_commit 为 INTEGRATED。**不统一要求所有模块 BOARD_TESTED。**
 - **阶段结果 vs 模块验证状态（分开）**：`phase_result`（NOT_STARTED/IN_PROGRESS/COMPLETED/SOFTWARE_READY/BLOCKED/FAILED）只描述阶段执行结果；`module_verification`（SOURCE_ONLY/HOST_TESTED/BOARD_TESTED/INTEGRATED）只描述模块验证等级；STATUS.md 用两列或两张表，不得混填同字段。
 - **STATUS.md**：模块/状态/`tested_code_commit`/`evidence_record_commit`/硬件版本/测试日期/证据/已知限制。测试结果只对记录 commit 有效；新 commit 不删旧结果（历史证据）；Agent 报告"本次改动使哪些旧结果失效"。
+- **commit 语义（强制）**：`tested_code_commit`＝被构建/烧录/测试的代码 commit；`evidence_record_commit`＝**首次把对应测试证据摘要持久化进仓库的 commit**。两者可相同或不同；**禁止在 commit 自身内容中保存自己的 SHA**（自引用不可求解）——后续证据 metadata 修正（补 SHA、改日期等）**不得**把 `evidence_record_commit` 改成该修正 commit 自身。
 - **Agent 与用户验证边界**：Agent 只能声称"静态检查过/host 测试过/CCS 构建过/烧录退出码 0"。**仅用户提供证据**（串口日志/照片/视频摘要/口述/仪器结果）才可记 BOARD_TESTED。Agent 禁止声称"上板验证通过、电机方向正确、舵机无抖动、OLED 正常、姿态达标"除非用户返回结果。本机无原生 C 编译器时禁标 HOST_TESTED。
 - **最小 CI 属 P0 门禁（已建 `.github/workflows/p0-gate.yml`）**：manifest 校验 / 文档一致性 / Markdown 本地链接 / host 测试；不在 CI 构建 CCS/SysConfig/烧录/硬件测试。**P3 仅扩展**纯算法测试范围与 UART transport 测试，**不再负责首次建立 CI**。
 

@@ -11,7 +11,7 @@
 | 芯片型号/封装 | MSPM0G3507, LQFP-64(PM) | MEASURED | |
 | CCS Theia | 20.5.1.00012 | MEASURED | 见 TOOLCHAIN_LOCK.md |
 | MSPM0 SDK | 2.10.00.04 | MEASURED | |
-| 调试器/探针（**默认**） | **XDS110**（用户持有）；J-Link 备用 | **MEASURED（2026-08-04）** | `detect_probe.py` 实测：USB ID 0451:BEF3、COM11(Aux)/COM12(App UART)；DAP 连接+寄存器读取成功（证据 `logs/tmp/toolchain/probe_connect.txt`，gitignored） |
+| 调试器/探针（**默认**） | **XDS110**（用户持有）；J-Link 备用 | **MEASURED（2026-08-04）** | `detect_probe.py` 实测：USB ID 0451:BEF3、Aux/App 两个 UART 口(App UART)；DAP 连接+寄存器读取成功（证据 `logs/tmp/toolchain/probe_connect.txt`，gitignored） |
 | 板载 LED | PB22 | DATASHEET | 天猛星板文档 |
 
 **调试与烧录方式（官方文档确认，2026-08-04）**：

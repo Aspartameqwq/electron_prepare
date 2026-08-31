@@ -24,7 +24,7 @@
 | TIMA1 | 双舵机 PWM 50Hz | P7 | DRAFT（CCP0=PA17, CCP1=PA16） |
 | I2C0 | OLED+MPU6050 | P8/P9 | DRAFT（SDA=PA0, SCL=PA1） |
 
-**规划变更记录（P1A）**：双舵机定时器由原计划的 **TIMG6 改为 TIMA1**——预检证实 TIMG6 在 LQFP-64 上可引出的 CCP0 引脚仅 PA21（天猛星 DO_NOT_USE）/PA0/PA8（TIMA0 专属），无合法解；TIMA1 有嘉立创本板例程验证组合（PA17/PA16）。此为实例变更决策：依据预检数据 + 官方例程证据，**非静默更换**。
+**规划变更记录（P1A）**：双舵机定时器由原计划的 **TIMG6 改为 TIMA1**——预检证实 TIMG6 在 LQFP-64 上可引出的 CCP0 引脚仅 PA21（天猛星 DO_NOT_USE）/PA0/PA8（TIMA0 专属），无合法解；TIMA1 有嘉立创本板例程验证组合（PA17/PA16）。正式决策记录：`docs/decisions/ADR-002-servo-timer-tima1.md`（本记录为摘要，ADR 为事实）。
 
 ## 约束（不变）
 

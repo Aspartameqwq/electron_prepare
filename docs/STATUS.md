@@ -9,9 +9,9 @@
 
 | 阶段 | 状态 | 说明 |
 |---|---|---|
-| P0 | **COMPLETED**（2026-08-04） | 工具链锁定 / 硬件档案 / host 规范（clang C11 + Sanitizer）/ 勘误 / 默认调试器 XDS110 / **探针证据**（`detect_probe`=XDS110 0451:BEF3 COM11/12；DAP 连接+寄存器读取成功，`logs/tmp/toolchain/probe_connect.txt`）/ **治理闭环**（manifest 81 项+校验脚本+`p0-gate` CI+ADR-001 分支策略，经 PR #1 真实合并）/ host 核心加固（PR #2）。可选（不阻塞）：GitHub 端将 `p0-gate` 设为 main required check |
-| P1 | **IN_PROGRESS**（2026-08-29 80MHz 基线切换，等待用户冷启动×3 验收） | 最小工程 `firmware/`（`control.syscfg` **80MHz 正式基线** HFXT+SYSPLL + PB22 LED + UART0 + SWD；唯一 `app/main.c`）；CCS headless 构建 0 编译警告（FLASH 2.5KB/128KB、RAM 512B/32KB）；XDS110 烧录成功；**80MHz 板端 System Reset×1 验证**：banner `CPUCLK=80000000 Hz`、UART 115200 正常、LED 心跳（`logs/tmp/p1_80mhz_rst1.txt`）。**32MHz 旧结果历史保留，不适用于当前版本**（32→80MHz 使旧板端测试失效）。**待用户：冷启动×3**（断电→上电，每次 banner 仅一次且 CPUCLK=80000000、LED 1Hz、无执行器输出）通过后 P1=COMPLETED |
-| P1A | **COMPLETED**（2026-08-29） | 全资源预解算通过：`docs/preflight/pin_preflight.syscfg`（NON_BUILDING）SysConfig **0 error**/7 warning（书面豁免见 ERRATA）；**TIMG12 可分配 ✓**（P2 门禁）；舵机定时器 TIMG6→**TIMA1**（依据预检数据+官方例程证据，见 RESOURCE_MAP 变更记录）；`docs/RESOURCE_MAP.md` + `docs/PINMAP.md`（DRAFT 17 引脚）已建 |
+| P0 | **COMPLETED**（2026-08-04） | 工具链锁定 / 硬件档案 / host 规范（clang C11 + Sanitizer）/ 勘误 / 默认调试器 XDS110 / **探针证据**（`detect_probe`=XDS110 0451:BEF3（Aux/App 两个 UART 口）；DAP 连接+寄存器读取成功，`logs/tmp/toolchain/probe_connect.txt`）/ **治理闭环**（manifest 81 项+校验脚本+`p0-gate` CI+ADR-001 分支策略，经 PR #1 真实合并）/ host 核心加固（PR #2）。可选（不阻塞）：GitHub 端将 `p0-gate` 设为 main required check |
+| P1 | **IN_PROGRESS**（2026-08-29 80MHz 基线切换，等待用户冷启动×3 验收） | 最小工程 `firmware/`（`control.syscfg` **80MHz 正式基线** HFXT+SYSPLL + PB22 LED + UART0 + SWD；唯一 `app/main.c`）；CCS headless 构建 0 编译警告（FLASH 2.5KB/128KB、RAM 512B/32KB）；XDS110 烧录成功；**80MHz 板端自动验证＝XDS110 System Reset ×3**（banner `CPUCLK=80000000 Hz` 每轮一次、UART/LED 正常，`logs/tmp/p1_80mhz_cold1/2/3.txt`；**System Reset×3 ≠ POR cold boot×3**）。**P1 使用功能勘误已全量筛查闭环**：SYSPLL_ERR_01/HANDLED_BY_SDK（FCC workaround 默认开启，生成代码含测频+重锁）、Flash 80MHz 等待状态/HANDLED_BY_SDK、**IOMUX_ERR_02/HANDLED_BY_SDK**（生成 init 顺序使唯一 PINCM RMW 在 MCLK≤40MHz 完成，80MHz 阶段零 IOMUX 访问）、UART/GPIO/时钟路径 按 SLAZ742H 明确 NOT_RELEVANT（依据见 `docs/ERRATA_CHECKLIST.md`）。**32MHz 旧结果历史保留，不适用于当前版本**（32→80MHz 使旧板端测试失效）。**待用户：冷启动×3**（断电→上电，每次 banner 仅一次且 CPUCLK=80000000、LED 1Hz、无执行器输出）通过后 P1=COMPLETED |
+| P1A | **COMPLETED**（2026-08-29） | 全资源预解算通过：`docs/preflight/pin_preflight.syscfg`（NON_BUILDING）SysConfig **0 error**/7 warning（书面豁免见 ERRATA）；**TIMG12 可分配 ✓**（P2 门禁）；舵机定时器 TIMG6→**TIMA1**（依据预检数据+官方例程证据，决策记录 `docs/decisions/ADR-002-servo-timer-tima1.md`，四文档已同步）；`docs/RESOURCE_MAP.md` + `docs/PINMAP.md`（DRAFT 17 引脚）已建 |
 | P2 | **NOT_STARTED** | 尚无 tick / scheduler |
 | P3 | **NOT_STARTED** | 尚无 `uart1_transport`、调度接入、板端回环、有界服务 |
 
@@ -29,6 +29,6 @@
 
 ## 三、关键工件现状（如实声明，2026-08-29）
 
-**已存在**：CCS 最小工程 `firmware/`（`control.syscfg` 80MHz 基线 + `app/main.c` + projectspec）；P1 板端证据（32MHz LED+UART banner、80MHz System Reset×1）；`docs/RESOURCE_MAP.md` / `PINMAP.md`（DRAFT）。
+**已存在**：CCS 最小工程 `firmware/`（`control.syscfg` 80MHz 基线 + `app/main.c` + projectspec）；P1 板端证据（32MHz LED+UART banner 历史；80MHz System Reset×3 自动验证）；**P1 使用功能勘误全量筛查闭环（见 ERRATA_CHECKLIST）**；`docs/RESOURCE_MAP.md` / `PINMAP.md`（DRAFT）/ `docs/decisions/` ADR-001/002。
 **仍不存在**：`scheduler`、`uart1_transport`、P2/P3 全部内容；**80MHz 冷启动×3 用户验收（P1 关闭前提）**。
 目录"当前/计划"区分见 `README.md` 第四节；`examples_and_documents/` 为参考库（已入库）。
