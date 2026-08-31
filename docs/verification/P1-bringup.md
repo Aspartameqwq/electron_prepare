@@ -9,8 +9,8 @@
 | 字段 | 值 |
 |---|---|
 | phase | P1 |
-| tested_code_commit | `（本分支 closeout 提交的完整 SHA，见 git log——构建/烧录处填真实值）` |
-| evidence_record_commit | `（保存本记录的实际 commit SHA；若与 tested code 不同 commit，以其为准）` |
+| tested_code_commit | `f39f61a4855b811f9a77251c57056792220176f1`（本轮 closeout 收口 commit；其工作树即 2026-08-31 clean build + DSLite flash 的代码） |
+| evidence_record_commit | `f39f61a4855b811f9a77251c57056792220176f1`（与 tested code 同 commit，同一收口 commit 内记录） |
 | firmware configuration | `control.syscfg`：HFXT 40MHz + SYSPLL + UDIV/2 = **80MHz**；PB22 LED；UART0@PA10/11 115200；SWD |
 | CPU frequency | **80000000 Hz**（生成头 `CPUCLK_FREQ` 核对 + 板端 banner 核对） |
 | CCS / SDK / SysConfig / compiler | CCS Theia 20.5.1 / MSPM0 SDK 2.10.00.04 / SysConfig 1.27.1+4634 / tiarmclang 4.0.4.LTS |
@@ -18,7 +18,7 @@
 | debugger | XDS110（外部 SWD，USB 0451:BEF3） |
 | build result | **BUILD OK**（`scripts/build.ps1 -Clean`：退出码门禁 + SysConfig 0 error/2 warning 白名单精确匹配 + 编译器 0 error/0 warning + 新 .out） |
 | flash result | **FLASH OK**（`scripts/flash.ps1` DSLite 后端：load+verify+run，退出码 0） |
-| automated_reset_verification | **通过（2026-08-29，Agent 经 XDS110 执行）**：System Reset ×3（`logs/tmp/p1_80mhz_cold1/2/3.txt`）——每轮 banner 恰好一次、`CPUCLK=80000000 Hz` 一致、UART 正常、LED 1Hz 心跳、无执行器输出（P1 无执行器代码）。**注意：System Reset 是调试复位（rst=SYS_DEBUG 可证），非 POR 物理断电冷启动** |
+| automated_reset_verification | **通过（2026-08-29，Agent 经 XDS110 执行）**：System Reset ×3（`logs/tmp/p1_80mhz_cold1/2/3.txt`）——每轮 banner 恰好一次、`CPUCLK=80000000 Hz` 一致、UART 正常、LED 1Hz 心跳、无执行器输出（P1 无执行器代码）。**2026-08-31 closeout 复验（f39f61a）：clean build → DSLite flash（program verification OK）→ XDS110 System Reset 冒烟**（`logs/tmp/p1_closeout_smoke.txt`：banner 恰好一次、`CPUCLK=80000000 Hz`、`rst SYS_DEBUG`、target left running）。**注意：System Reset 是调试复位（rst=SYS_DEBUG 可证），非 POR 物理断电冷启动** |
 | user_board_verification | **PENDING**：POR 级物理断电冷启动 ×3 尚未执行（操作与通过标准见下节"待用户验收"）；Agent 不得把 System Reset 描述为 cold boot |
 | test date | 2026-08-29（automated_reset_verification）；user_board_verification 待用户 |
 | UART banner 摘要 | `fw v0.1.0 / app LED_BRINGUP(id=1) / clk CPUCLK=80000000 Hz / rst SYS_DEBUG`（`logs/tmp/p1_80mhz_rst1.txt`） |
