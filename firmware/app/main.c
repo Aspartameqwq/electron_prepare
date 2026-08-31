@@ -76,11 +76,12 @@ static void uart0_print_u32(uint32_t v)
 /**
  * @brief delay_cycles 忙等延时（P1 过渡方案；P2 换 TIMG12 1ms 节拍）。
  * @param ms 延时毫秒数。按 1ms 逐次调用 delay_cycles（其参数有上限）。
- * @note 周期数 = CPUCLK_FREQ/1000，随生成宏自动适应当前时钟配置。
+ * @note cycles_per_ms 由 CPUCLK_FREQ 生成宏自动计算，随当前时钟基线自适应（当前 80MHz 基线 = 80000），
+ *       不引入硬编码主频；P2 由 TIMG12 1ms 节拍替换本函数。
  */
 static void delay_ms_busywait(uint32_t ms)
 {
-    const uint32_t cycles_per_ms = CPUCLK_FREQ / 1000u;   /* 32MHz → 32000 */
+    const uint32_t cycles_per_ms = CPUCLK_FREQ / 1000u;   /* 由 CPUCLK_FREQ 生成宏自动计算（当前 80MHz 基线 = 80000），不引入硬编码主频 */
     while (ms-- > 0u) {
         delay_cycles(cycles_per_ms);
     }
@@ -110,7 +111,7 @@ int main(void)
 
     /* 2. 执行器安全：P1 无 PWM 定时器/电机/舵机代码，执行器物理隔离，天然禁用 */
 
-    /* 3+4. 启动日志（UART0 @ PA10/PA11 → 板载 CH340 → PC COM12） */
+    /* 3+4. 启动日志（UART0 @ PA10/PA11 → 板载 CH340 → PC 串口） */
     print_boot_banner();
 
     /* 5. LED 心跳：PB22 1Hz 翻转（500ms 亮 / 500ms 灭） */

@@ -4,7 +4,7 @@
  * P1 bringup（feat 分支 chore/p1-closeout-80mhz）：
  *   - **正式时钟基线 80MHz**（HFXT 40MHz + SYSPLL，TI 官方路径；PB22/UART0/SWD 功能不变）
  *   - PB22 板载 LED（GPIO 输出，初始低 = 熄灭）
- *   - UART0 @ PA10/PA11（板上 CH340 → PC COM13，115200 8N1）——文本调试日志
+ *   - UART0 @ PA10/PA11（板载 CH340 → PC 串口，SERIAL_PORT 由 scripts/env.local.ps1 指定，115200 8N1）——文本调试日志
  *   - DEBUGSS（SWD: PA19/PA20，XDS110 调试）
  *
  * P1 无 PWM/TIMG/I2C/UART1——按"目录按阶段创建、外设按阶段加入"原则，后续阶段再加。
@@ -18,7 +18,13 @@ const Board  = scripting.addModule("/ti/driverlib/Board", {}, false);
 
 /* ---- 时钟树：80MHz 正式基线（HFXT 40MHz → SYSPLL → MCLK 80MHz；UDIV/2 给 ULPCLK 40MHz）----
  * 参考路径已在天猛星例程（TB6612/SG90 例程的 empty.syscfg）与本机 SysConfig 1.27.1 验证。
- * HFXT warning（Solution may have changed）为已知提示，消除项见 docs/ERRATA_CHECKLIST。 */
+ * HFXT warning（Solution may have changed）为已知提示，消除项见 docs/ERRATA_CHECKLIST。
+ *
+ * SYSPLL_ERR_01（SLAZ742H）：SYSPLL 使能时可能锁错频。SDK 2.10 SysConfig 对该勘误的 FCC 校验
+ * workaround 默认开启（SYSCTL 时钟选项 enableWorkaround_SYSPLL_ERR_01 默认 true，
+ * isdeviceAffected_SYSPLL_ERR_01() 对全部设备返回 true），生成 ti_msp_dl_config.c 自动包含
+ * FCC 测频 + 比例界检查 + 失败 toggle 重锁循环；本项目未覆盖该 WEAK 函数、不改生成文件。
+ * 见 docs/ERRATA_CHECKLIST.md。 */
 SYSCTL.clockTreeEn = true;
 
 const udiv = system.clockTree["UDIV"];

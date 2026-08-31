@@ -8,7 +8,7 @@
  * └────────────────────────────────────────────────────────────────────────┘
  *
  * 派生自 80MHz 基线 control.syscfg，一次性加入 PLAN.md §三 的全部核心资源：
- *   TIMG12(1ms tick) TIMA0(双电机 20kHz) TIMG6(双舵机 50Hz) UART0 UART1
+ *   TIMG12(1ms tick) TIMA0(双电机 20kHz) TIMA1(双舵机 50Hz) UART0 UART1
  *   I2C0(OLED+MPU6050) 左右编码器 A/B GPIO TB6612 方向+STBY GPIO PB22 LED SWD
  *
  * 引脚策略（预检语义）：除板级固定（PA5/6 晶振、PA10/11 CH340、PB22 LED、
@@ -134,8 +134,9 @@ TBC.associatedPins[3].initialValue = "CLEARED";
 TBC.associatedPins[4].$name = "STBY";
 TBC.associatedPins[4].initialValue = "CLEARED";   /* STBY 上电低（安全默认） */
 
-/* ---- P7：TIMG6 = 双舵机 50Hz（80MHz/8/200=50kHz；count=1000 → 50Hz）----
- * 引脚 DRAFT 交 solver（PA12/PA13 不在 TIMG6 可用集，前轮预检已证实） */
+/* ---- P7：TIMA1 = 双舵机 50Hz（80MHz/8/200=50kHz；count=1000 → 50Hz）----
+ * 引脚 DRAFT 交 solver。P1A 决策：TIMG6 在 LQFP-64 唯一可引出 CCP0=PA21（DO_NOT_USE），
+ * 无合法双舵机解，改用 TIMA1（PA17/PA16，嘉立创本板例程组合），见 docs/decisions/ADR-002 */
 const SERVO = PWM.addInstance();
 SERVO.$name = "SERVO_PWM";
 SERVO.peripheral.ccp0Pin.$assign = "PA17";    /* 嘉立创 TB6612 本板例程组合 */

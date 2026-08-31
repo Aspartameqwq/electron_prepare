@@ -6,8 +6,10 @@
 #                     logs/tmp/toolchain/dslite_help.txt ("DSLite flash --config=... -f -v -u").
 #   skill           : optional convenience backend (mspm0-ccs skill ccs_dss_debug.py);
 #                     NOT required - repo rules keep skill as optional aid only.
-# Preconditions checked: ccxml exists, .out exists (fresh build), probe reachable.
-# Exit codes strictly checked; no probe serial / COM number written to repo files.
+# Preconditions checked: ccxml exists, .out exists (fresh build), DSLITE_PATH set.
+# NOTE: probe reachability is NOT probed separately in this script — it is validated by the
+#       DSLite flash/index connection itself (non-zero exit code on connect failure => FLASH FAILED below).
+# No probe serial / COM number written to repo files.
 param(
     [switch]$Run,
     [switch]$Capture,

@@ -2,7 +2,8 @@
 # Usage: powershell -ExecutionPolicy Bypass -File scripts/build.ps1 [-Clean]
 # Gates (all must pass to return 0):
 #   1) projectCreate/projectBuild exit code = 0
-#   2) SysConfig: 0 error; warnings allowed only for ERATA-exempt HFXT hints (x2, see docs/ERRATA_CHECKLIST.md)
+#   2) SysConfig: 0 error; warning count must EXACTLY equal the approved whitelist (HFXT x2, see docs/ERRATA_CHECKLIST.md);
+#      any new/unknown SysConfig warning or unparseable summary -> BUILD FAILED
 #   3) Compiler/linker: 0 error, 0 warning (matched by real diagnostic format "warning:"/"error:")
 #   4) .out must be freshly produced by THIS build (stale artifact removed before build)
 # Requires: scripts/env.local.ps1 (CCS_HOME / MSPM0_SDK_ROOT; template env.example.ps1)
@@ -16,7 +17,11 @@ if (Test-Path $envFile) { . $envFile }
 else { Write-Error "missing scripts/env.local.ps1 (copy env.example.ps1 and fill local paths)" }
 
 $CCS_CLI = Join-Path $env:CCS_HOME 'ccs/eclipse/ccs-server-cli.bat'
-$WS      = Join-Path $Repo 'logs/tmp/ccs_ws'
+# Workspace marker: unique per run. The CCS launcher derives the real Eclipse workspace from this
+# path (AppData\Local\Texas Instruments\CCS\.ccs-server\workspaces\<md5>); a FIXED marker caches a
+# stale project import so later projectCreate reports "already exists in workspace" and the build
+# fails with "Project not open". A per-run unique marker => fresh derived workspace => clean import.
+$WS      = Join-Path $Repo ("logs/tmp/ccs_ws_" + [DateTime]::Now.ToString('yyyyMMdd_HHmmss'))
 $PROJ    = 'firmware_p1_bringup'
 $DBGDIR  = Join-Path $Repo 'firmware/Debug'
 $OUT     = Join-Path $DBGDIR 'firmware_p1_bringup.out'
@@ -51,34 +56,55 @@ if ($LASTEXITCODE -ne 0) { Write-Error "projectBuild FAILED (exit $LASTEXITCODE)
 
 # ---- 4) machine gates: real diagnostic formats (not fuzzy grep) ----
 $logText = Get-Content $LOG -Raw
-# SysConfig summary line: "N error(s), M warning(s)"
-$scErr  = if ($logText -match '(\d+)\s+error\(s\)')   { [int]$Matches[1] } else { -1 }
-$scWarn = if ($logText -match '(\d+)\s+warning\(s\)') { [int]$Matches[1] } else { -1 }
-# Compiler/linker diagnostic lines, excluding ERATA-exempt SysConfig HFXT hints
+# SysConfig summary line: "N error(s), M warning(s)" — unparseable summary = FAIL
+$scErr  = if ($logText -match '(\d+)\s+error\(s\)')    { [int]$Matches[1] } else { $null }
+$scWarn = if ($logText -match '(\d+)\s+warning\(s\)')  { [int]$Matches[1] } else { $null }
+if ($null -eq $scErr -or $null -eq $scWarn) {
+    Write-Error "BUILD FAILED: SysConfig summary line not parseable ('N error(s), M warning(s)' missing) - log: $LOG"
+}
+# Compiler/linker diagnostic lines: anything matching warning:/error: that is NOT an approved
+# SysConfig whitelist item counts as a compiler/linker diagnostic (whitelist text goes through
+# the SysConfig summary gate below, not the compiler gate).
 $knownExempt = @(
     'HFXT\(/ti/clockTree/pinFunction\.js\) peripheral\.hfxInPin: Solution may have changed',
     'HFXT\(/ti/clockTree/pinFunction\.js\) peripheral\.hfxOutPin: Solution may have changed'
 )
 $compilerWarn = 0; $compilerErr = 0
+$syscfgWarnLines = 0
 foreach ($line in (Get-Content $LOG)) {
     $isExempt = $false
     foreach ($pat in $knownExempt) { if ($line -match $pat) { $isExempt = $true; break } }
-    if ($isExempt) { continue }
+    if ($isExempt) {
+        $syscfgWarnLines++          # approved SysConfig hint occurrences (whitelist members)
+        continue
+    }
     if ($line -match '(^|\s)warning:\s') { $compilerWarn++ }
     if ($line -match '(^|\s)error:\s')   { $compilerErr++ }
 }
 
-Write-Host "SysConfig : error=$scErr warning=$scWarn (2 HFXT hints exempt, see docs/ERRATA_CHECKLIST.md)"
+# SysConfig warnings must EXACTLY match the approved whitelist:
+#   - whitelist occurrence count must equal the SysConfig summary warning count
+#     (summary==count 时任一未匹配 warning 都会使两者不相等 -> FAIL，无法解析入 summary 的警告不计入)
+#   - any non-exempt warning line (compiler/linker/SysConfig new) -> FAIL (compiler/linker must be 0)
+$scWarnFailures = @()
+if ($syscfgWarnLines -ne $scWarn) {
+    $scWarnFailures += "SysConfig warning count mismatch: summary=$scWarn but whitelist-matched lines=$syscfgWarnLines (new/unknown warnings?)"
+}
+if ($compilerWarn -gt 0) {
+    $scWarnFailures += "non-whitelist warning lines present: $compilerWarn"
+}
+
+Write-Host "SysConfig : error=$scErr warning=$scWarn (whitelist HFXT x2; occurrences matched: $syscfgWarnLines; see docs/ERRATA_CHECKLIST.md)"
 Write-Host "Compiler  : error=$compilerErr warning=$compilerWarn"
 
 $fail = @()
 if ($scErr -ne 0)        { $fail += "SysConfig error=$scErr" }
+if ($scWarnFailures.Count -gt 0) { $fail += $scWarnFailures }
 if ($compilerErr -ne 0)  { $fail += "compiler error=$compilerErr" }
-if ($compilerWarn -ne 0) { $fail += "compiler warning=$compilerWarn (non-exempt warnings not allowed)" }
 if (-not (Test-Path $OUT)) { $fail += "artifact missing: $OUT" }
 
 if ($fail.Count -gt 0) {
     Write-Error ("BUILD FAILED: " + ($fail -join '; ') + " - log: $LOG")
 }
-Write-Host "BUILD OK (gates passed: exit codes / SysConfig 0 error / compiler warning=0 / fresh .out): $OUT"
+Write-Host "BUILD OK (gates: exit codes / SysConfig error=0 / warnings exact-whitelist / compiler+linker warning=0 / fresh .out): $OUT"
 exit 0

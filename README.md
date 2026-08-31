@@ -35,12 +35,12 @@
 
 可选扩展（不阻塞核心发布）
   E1 K230 会话层      E2 航向控制 + 云台随动
-  E3 80MHz 优化       E4 WWDT + 长期可靠性
+  E3 性能/功耗/编译优化  E4 WWDT + 长期可靠性
 ```
 
 ## 四、目录结构
 
-当前（P0 进行中；**尚未开始任何 CCS/板端实施阶段**；已有 `ring_buffer`、`frame_codec` 纯软件预研资产）：
+当前（P0=COMPLETED、P1A=COMPLETED、**P1=IN_PROGRESS**——待用户 80MHz POR 冷启动×3 验收；已含 `ring_buffer`/`frame_codec` 纯软件预研资产，属 P3 前置，非阶段完成）：
 
 ```
 2027-prepare/
@@ -53,13 +53,18 @@
 │   ├── TOOLCHAIN_LOCK.md      # 工具链版本锁定（脱敏）
 │   ├── HARDWARE_PROFILE.md    # 硬件参数档案（P0 基础 + 阶段字段 UNKNOWN）
 │   ├── HOST_TEST.md           # host 测试规范（clang C11 -Werror）
-│   ├── ERRATA_CHECKLIST.md    # 芯片勘误清单（按阶段筛选）
+│   ├── ERRATA_CHECKLIST.md    # 芯片勘误清单（按阶段筛选 + SysConfig warning 白名单）
 │   ├── STATUS.md              # 阶段结果 + 模块验证状态（如实）
+│   ├── RESOURCE_MAP.md        # 外设资源规划（P1A 预检后 DRAFT）
+│   ├── PINMAP.md              # 物理引脚映射（人类可读镜像，DRAFT/FROZEN）
+│   ├── preflight/             # pin_preflight.syscfg（NON_BUILDING，P1A 全资源共存预检）
+│   ├── decisions/             # ADR 决策记录（ADR-001 分支策略 / ADR-002 舵机定时器 TIMA1）
+│   ├── verification/          # 阶段上板验证记录（P1-bringup 等）
 │   ├── example_reviews/       # 例程评审（可取/不足/借鉴）
 │   └── reference/             # 参考来源清单 + 许可审计
-├── firmware/          # 仅含预研纯算法文件（config/middleware），尚未形成可编译 CCS 工程
+├── firmware/          # 可编译 CCS 工程：control.syscfg（80MHz 基线）+ app/main.c + projectspec + config
 ├── tests/host/        # ring/frame_codec host 测试（预研资产）
-├── scripts/           # env.example.ps1 · test_host.ps1
+├── scripts/           # build.ps1 · flash.ps1 · check_doc_consistency.py · check_markdown_links.py · test_host.ps1
 └── examples_and_documents/    # 参考例程与资料库（已入库；构建产物/缓存已排除）
 ```
 
@@ -91,7 +96,7 @@ scripts/                build.ps1 · flash.ps1 · verify.ps1 · test_host.ps1
 | P4 | TB6612 开环电机（安全门禁先行） | P1A 电机资源 |
 | P5 | 双编码器 + 自适应测速 | P1A 编码器 GPIO |
 | P6 | 速度 PI（软件先行，板上闭环等 P4+P5） | P6-SOFTWARE / P6-BOARD |
-| P7 | 双舵机（共享定时器单通道禁用） | TIMG6 资源 |
+| P7 | 双舵机（共享定时器单通道禁用） | TIMA1 资源 |
 | P8 | 同步阻塞 I2C + OLED 分块刷新 | I2C0 资源 |
 | P9 | MPU6050 + 基础姿态 | I2C 总线过 |
 | P10 | **核心集成冒烟**（发布配置下 10min）→ v1.0 | 全核心 |
@@ -137,8 +142,8 @@ scripts/                build.ps1 · flash.ps1 · verify.ps1 · test_host.ps1
 ## 九、当前状态（如实）
 
 - **P0：COMPLETED**（2026-08-04）——工具链锁定 / 硬件档案 / host 规范（含 Sanitizer）/ 勘误 / 默认调试器 XDS110 / **探针实测证据**（XDS110 ↔ MSPM0G3507 DAP 连通 + 寄存器读取）/ 治理闭环（manifest 81 项 + 校验脚本 + `p0-gate` CI + ADR-001 分支策略，PR #1 合并）。
-- **P1：IN_PROGRESS**（2026-08-29 切 80MHz 基线，等待冷启动×3）——最小工程 `firmware/`（`control.syscfg` **80MHz 正式基线** HFXT+SYSPLL + 唯一 `app/main.c`）；headless 构建 0 编译警告；XDS110 烧录成功；80MHz 板端 System Reset×1 验证（banner `CPUCLK=80000000 Hz`）。**32MHz 旧板端结果历史保留、不适用于当前版本**。**待用户冷启动×3 后进入 COMPLETED（以 STATUS 为准）**。
-- **P1A：COMPLETED**（2026-08-29）——全资源预解算 0 error（TIMG12 可分配 ✓；舵机定时器 TIMG6→TIMA1）；`docs/RESOURCE_MAP.md` + `docs/PINMAP.md`（DRAFT）已建。
+- **P1：IN_PROGRESS**（2026-08-29 切 80MHz 基线，等待冷启动×3）——最小工程 `firmware/`（`control.syscfg` **80MHz 正式基线** HFXT+SYSPLL + 唯一 `app/main.c`）；headless 构建 0 编译警告；XDS110 烧录成功；80MHz 板端自动验证 System Reset×3（banner `CPUCLK=80000000 Hz` 每轮一次；≠POR 冷启动）；**SYSPLL_ERR_01 / Flash(80MHz 等待状态) 等 P1 使用功能勘误已全量筛查闭环（HANDLED_BY_SDK，见 `docs/ERRATA_CHECKLIST.md`）**。**32MHz 旧板端结果历史保留、不适用于当前版本**。**待用户冷启动×3 后进入 COMPLETED（以 STATUS 为准）**。
+- **P1A：COMPLETED**（2026-08-29）——全资源预解算 0 error（TIMG12 可分配 ✓；舵机定时器 TIMG6→TIMA1，决策见 `docs/decisions/ADR-002-servo-timer-tima1.md`）；`docs/RESOURCE_MAP.md` + `docs/PINMAP.md`（DRAFT）已建。
 - **P2 / P3：NOT_STARTED**——尚无 scheduler、`uart1_transport`。
 - **纯软件预研资产（非阶段完成）**：`ring_buffer` + `frame_codec` 已通过 host 测试（`HOST_TESTED`，CRC 向量 `0x78DA`、回绕/恢复/多帧/Sanitizer 全过），但 `release_gate = NOT_MET`（目标端并发 / transport 集成待定），见 `docs/STATUS.md`。**这不等同于 P3 完成。**
 - 调试器决策（官方文档确认）：天猛星**无板载调试器**，**默认调试器 = 外部 XDS110**（SWD: PA19=SWDIO / PA20=SWCLK），J-Link 备用；禁 ST-LINK。

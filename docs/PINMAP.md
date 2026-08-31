@@ -13,7 +13,7 @@
 | PA6 | HFXT | HFXOUT | FROZEN | 40MHz 晶振（板载） |
 | PA19 | SWD | SWDIO | FROZEN | XDS110 |
 | PA20 | SWD | SWCLK | FROZEN | XDS110 |
-| PA10 | UART0 | TX | FROZEN | 板载 CH340 → PC COM13（文本日志） |
+| PA10 | UART0 | TX | FROZEN | 板载 CH340 → PC 串口（SERIAL_PORT 由 env.local.ps1 指定） |
 | PA11 | UART0 | RX | FROZEN | 板载 CH340 |
 | PB22 | GPIO | LED | FROZEN | 板载心跳灯（初始低） |
 
