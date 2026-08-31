@@ -91,6 +91,8 @@ def main() -> int:
         (r"无 `?control\.syscfg`?", "声称无 control.syscfg（已存在）"),
         (r"E3 80MHz|80MHz 优化|E3 ＝? ?80MHz", "E3 被描述为 80MHz 优化（应为性能/功耗/编译优化）"),
         (r"System Reset ×1", "仍写 System Reset ×1（真实已 ×3）"),
+        (r"IOMUX[/、][^\n]*NOT_RELEVANT", "把 IOMUX 归入 NOT_RELEVANT（IOMUX_ERR_02=HANDLED_BY_SDK，见 ERRATA）"),
+        (r"IOMUX_ERR_02[^\n]*\*\*NOT_RELEVANT\*\*", "把 IOMUX_ERR_02 标为 NOT_RELEVANT（应为 HANDLED_BY_SDK）"),
     ]
     for fname, text in (("STATUS.md", text_status), ("README.md", text_readme)):
         for pat, desc in stale_patterns:
