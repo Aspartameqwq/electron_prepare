@@ -446,6 +446,7 @@ UART/I2C/定时器驱动                          → BOARD_TESTED（P10 再共�
 发布门槛＝各模块达到上表最低状态 + P10 当前 tested_code_commit 为 INTEGRATED。**不统一要求所有模块 BOARD_TESTED。**
 - **阶段结果 vs 模块验证状态（分开）**：`phase_result`（NOT_STARTED/IN_PROGRESS/COMPLETED/SOFTWARE_READY/BLOCKED/FAILED）只描述阶段执行结果；`module_verification`（SOURCE_ONLY/HOST_TESTED/BOARD_TESTED/INTEGRATED）只描述模块验证等级；STATUS.md 用两列或两张表，不得混填同字段。
 - **STATUS.md**：模块/状态/`tested_code_commit`/`evidence_record_commit`/硬件版本/测试日期/证据/已知限制。测试结果只对记录 commit 有效；新 commit 不删旧结果（历史证据）；Agent 报告"本次改动使哪些旧结果失效"。
+- **commit 语义（强制）**：`tested_code_commit`＝被构建/烧录/测试的代码 commit；`evidence_record_commit`＝**首次把对应测试证据摘要持久化进仓库的 commit**。两者可相同或不同；**禁止在 commit 自身内容中保存自己的 SHA**（自引用不可求解）——后续证据 metadata 修正（补 SHA、改日期等）**不得**把 `evidence_record_commit` 改成该修正 commit 自身。
 - **Agent 与用户验证边界**：Agent 只能声称"静态检查过/host 测试过/CCS 构建过/烧录退出码 0"。**仅用户提供证据**（串口日志/照片/视频摘要/口述/仪器结果）才可记 BOARD_TESTED。Agent 禁止声称"上板验证通过、电机方向正确、舵机无抖动、OLED 正常、姿态达标"除非用户返回结果。本机无原生 C 编译器时禁标 HOST_TESTED。
 - **最小 CI 属 P0 门禁（已建 `.github/workflows/p0-gate.yml`）**：manifest 校验 / 文档一致性 / Markdown 本地链接 / host 测试；不在 CI 构建 CCS/SysConfig/烧录/硬件测试。**P3 仅扩展**纯算法测试范围与 UART transport 测试，**不再负责首次建立 CI**。
 
