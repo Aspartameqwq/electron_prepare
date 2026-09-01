@@ -1,6 +1,6 @@
 # MSPM0G3507 电赛控制类模块库实施计划（v7.2，纠偏补丁）
 
-> v7.2 为纠偏补丁（**不改功能范围**）：① 阶段状态增加 `NOT_STARTED / IN_PROGRESS`，当前如实状态见 `docs/STATUS.md`（P0/P1A=COMPLETED、P1=IN_PROGRESS 等 80MHz 冷启动、P2/P3=NOT_STARTED；`ring_buffer`/`frame_codec` 仅为提前完成的纯软件预研资产，**非阶段完成**）；② I2C 恢复语义改为"超时即返回错误 + `recovery_pending`，控制器恢复由低优先级 service/SAFE 完成，不计入原事务 API"；③ `mspm0-ccs` skill 降为**可选自动化辅助**，强制规则以仓库内 `AGENTS.md`/`PLAN.md` 为准。真实问题通过代码审查、硬件日志与 ADR 修正。
+> v7.2 为纠偏补丁（**不改功能范围**）：① 阶段状态增加 `NOT_STARTED / IN_PROGRESS`，当前如实状态见 `docs/STATUS.md`（P0/P1/P1A=COMPLETED、P2/P3=NOT_STARTED；`ring_buffer`/`frame_codec` 仅为提前完成的纯软件预研资产，**非阶段完成**）；② I2C 恢复语义改为"超时即返回错误 + `recovery_pending`，控制器恢复由低优先级 service/SAFE 完成，不计入原事务 API"；③ `mspm0-ccs` skill 降为**可选自动化辅助**，强制规则以仓库内 `AGENTS.md`/`PLAN.md` 为准。真实问题通过代码审查、硬件日志与 ADR 修正。
 
 ## Context（目标 + 开发方式约束）
 
@@ -386,7 +386,7 @@ i2c_status_t i2c_write_read_blocking(..., uint32_t timeout_ms);
 
 ## 十二、核心实施阶段（P0~P10）
 
-**阶段结果（v7.2 增补）**：`NOT_STARTED`＝未开始；`IN_PROGRESS`＝进行中；`COMPLETED`＝软件+上板验收完成；`SOFTWARE_READY`＝源码+host+构建完成等待硬件（可进不依赖该硬件输出的软件工作，不得进依赖其真实输出的闭环阶段）；`BLOCKED`＝缺硬件/参数/引脚/工具，只阻塞直接依赖阶段；`FAILED`＝现有条件下未通过，先修复。**当前如实状态：P0=COMPLETED（探针证据+治理闭环，2026-08-04）、P1A=COMPLETED（全资源预检+DRAFT，2026-08-29）、P1=IN_PROGRESS（80MHz 正式基线已收口，系统复位×3 通过，**待用户 POR 冷启动×3 验收后 COMPLETED**）、P2/P3=NOT_STARTED（`ring_buffer`/`frame_codec` 仅为预研资产，release_gate=NOT_MET，见 `docs/STATUS.md`）。**
+**阶段结果（v7.2 增补）**：`NOT_STARTED`＝未开始；`IN_PROGRESS`＝进行中；`COMPLETED`＝软件+上板验收完成；`SOFTWARE_READY`＝源码+host+构建完成等待硬件（可进不依赖该硬件输出的软件工作，不得进依赖其真实输出的闭环阶段）；`BLOCKED`＝缺硬件/参数/引脚/工具，只阻塞直接依赖阶段；`FAILED`＝现有条件下未通过，先修复。**当前如实状态：P0=COMPLETED（探针证据+治理闭环，2026-08-04）、P1=COMPLETED（80MHz 基线+勘误闭环+构建门禁，用户 POR 冷启动×3 通过 2026-09-01）、P1A=COMPLETED（全资源预检+DRAFT，2026-08-29）、P2/P3=NOT_STARTED（`ring_buffer`/`frame_codec` 仅为预研资产，release_gate=NOT_MET，见 `docs/STATUS.md`）。**
 
 | 阶段 | 内容 | 关键验收（基础必做 / 有仪器选做） |
 |---|---|---|

@@ -22,14 +22,14 @@
 | warnings-as-errors 门禁（2026-09-01） | compiler `-Werror` 经 `firmware/gate.opt` 响应文件传入（CCS TICLANG 工程模型丢弃 projectspec 里的裸 `-Werror`；@file 由 tiarmclang 自身展开）；linker `--emit_warnings_as_errors`（tiarmlnk help 确认）经 `-Wl,` 透传。**实证**：① 单独工具链负测试（warning+`-Werror`→error 退出 1）；② 端到端负测试——临时在 gate.opt 加 `-Wnotarealoption` → 构建失败、无 .out（diagnostics `[-Werror,-Wunknown-warning-option]` 证明两选项同时生效）→ 已还原；③ 最终 clean build BUILD OK（SysConfig error=0/warning=2 exact-set、compiler+linker 0/0、fresh .out）。**本项为 build tooling 变更（projectspec/gate.opt），不改生成代码与固件源；tested commit 仍 f39f61a** |
 | final pipeline flash/smoke（2026-09-01） | **PASS（main 合并后补做）**：探针重连后，main @ `4ef5cef` 的 clean build 产物（构建于 merged main，树与 f39f61a 固件源逐字节同源）→ DSLite flash **exit 0 + "Program verification successful"** → XDS110 **System Reset** 冒烟（`logs/tmp/p1_main_smoke.txt`：banner 恰好一次、`CPUCLK=80000000 Hz`、`rst SYS_DEBUG`、target left running；用户同步目视 LED 1Hz 心跳）。**注意：System Reset 是调试复位，非 POR 冷启动**；POR ×3 见 `user_board_verification` |
 | automated_reset_verification | **通过（2026-08-29，Agent 经 XDS110 执行）**：System Reset ×3（`logs/tmp/p1_80mhz_cold1/2/3.txt`）——每轮 banner 恰好一次、`CPUCLK=80000000 Hz` 一致、UART 正常、LED 1Hz 心跳、无执行器输出（P1 无执行器代码）。**2026-08-31 closeout 复验（f39f61a）：clean build → DSLite flash（program verification OK）→ XDS110 System Reset 冒烟**（`logs/tmp/p1_closeout_smoke.txt`：banner 恰好一次、`CPUCLK=80000000 Hz`、`rst SYS_DEBUG`、target left running）。**注意：System Reset 是调试复位（rst=SYS_DEBUG 可证），非 POR 物理断电冷启动** |
-| user_board_verification | **PENDING**：POR 级物理断电冷启动 ×3 尚未执行（操作与通过标准见下节"待用户验收"）；Agent 不得把 System Reset 描述为 cold boot |
-| test dates | initial automated reset verification = **2026-08-29**（System Reset ×3）；closeout re-verification = **2026-08-31**（f39f61a clean build + DSLite flash + reset smoke）；warnings-as-errors build-gate 验证 = **2026-09-01**（clean build PASS + 负测试 PASS）；final pipeline flash/smoke（main @4ef5cef）= **2026-09-01 PASS**；user POR verification = **PENDING**（待用户） |
+| user_board_verification | **PASS（2026-09-01，用户口述证据）**：POR 级物理断电冷启动 ×3 —— 用户确认每轮完全断电→重新上电、LED 约 1Hz 心跳、无执行器输出（P1 无执行器代码，物理隔离），与既有自动化证据（banner 每复位恰好一次、CPUCLK=80000000、固件 banner 逻辑不变）一致。Agent 未声称自行观察到用户轮次的串口 banner 内容；串口 rst 字段以固件 banner（多轮自动化运行 `rst` 字段一致）+ 用户逐轮观察为准 |
+| test dates | initial automated reset verification = **2026-08-29**（System Reset ×3）；closeout re-verification = **2026-08-31**（f39f61a clean build + DSLite flash + reset smoke）；warnings-as-errors build-gate 验证 = **2026-09-01**（clean build PASS + 负测试 PASS）；final pipeline flash/smoke（main @4ef5cef）= **2026-09-01 PASS**；user POR verification = **2026-09-01 PASS**（用户口述证据，P1 关闭） |
 | UART banner 摘要 | `fw v0.1.0 / app LED_BRINGUP(id=1) / clk CPUCLK=80000000 Hz / rst SYS_DEBUG`（`logs/tmp/p1_80mhz_rst1.txt`） |
 | LED result | 心跳运行中（System Reset ×3 每轮后均连续闪烁） |
 | SYSPLL_ERR_01 workaround 记录 | SDK/SysConfig 处理机制：SLAZ742H 官方 workaround＝FCC（Frequency Clock Counter）监测 SYSPLL 频率，错误则 disable/re-enable 重锁。SysConfig SYSCTL 时钟选项 `enableWorkaround_SYSPLL_ERR_01` **默认 true**（displayName "Validate SYSPLL Frequency Lock"；`isdeviceAffected_SYSPLL_ERR_01()` 全设备 true）→ 生成代码 `firmware/Debug/syscfg/ti_msp_dl_config.c` L108-199 自动含 FCC 测频（LFCLK 触发）+ 比例界检查（`FCC_EXPECTED_RATIO=2000`＝80MHz/40MHz，±0.3%）+ 失败 toggle SYSPLL 重锁循环（注释 `[SYSPLL_ERR_01]`）。本项目未覆盖该 WEAK 函数、未改生成文件。详见 `docs/ERRATA_CHECKLIST.md` |
 | known limitations | ① delay 为 `delay_cycles` 忙等（P2 换 TIMG12 节拍）；② UART0 为阻塞发送（P3 换非阻塞队列）；③ banner 每次复位打印一次 |
 
-### 待用户验收：冷启动 ×3（P1 关闭前提，user_board_verification=PENDING）
+### 用户验收记录：冷启动 ×3（user_board_verification=PASS，2026-09-01）
 
 操作（共 3 轮，每轮独立）：
 1. **拔掉板子 TYPE-C 供电（完全断电）→ 等 2 秒 → 重新插上**；
@@ -37,7 +37,8 @@
 3. 记录第 3 轮的 `rst` 字段（断电冷启动应显示 `POR_*` 类，非 `SYS_DEBUG`）。
 
 通过标准：3 轮全部满足 + 全程无电机/舵机/PWM 输出（P1 无执行器代码，物理隔离）。
-用户返回以上证据后，`user_board_verification` 才标通过、P1 才能标 `COMPLETED`。
+**结果（用户口述，2026-09-01）**：×3 全部通过（每轮断电→上电、LED 1Hz、无执行器输出；与自动化 banner 证据一致）→ P1=COMPLETED。
+**证据局限声明**：用户轮次的逐轮串口 rst 字段未留存日志（read-to-clear 特性使事后读取不可行——RSTSTAT.ID 读取即清除，事后无法复核历史复位原因）；判定依据＝用户逐轮观察 + 固件 banner 逻辑在多轮自动化运行中 rst 字段一致 + 无执行器输出的物理隔离。
 
 ---
 

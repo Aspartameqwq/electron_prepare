@@ -40,7 +40,7 @@
 
 ## 四、目录结构
 
-当前（P0=COMPLETED、P1A=COMPLETED、**P1=IN_PROGRESS**——待用户 80MHz POR 冷启动×3 验收；已含 `ring_buffer`/`frame_codec` 纯软件预研资产，属 P3 前置，非阶段完成）：
+当前（P0=COMPLETED、**P1=COMPLETED**（2026-09-01 用户 POR 冷启动×3）、P1A=COMPLETED；已含 `ring_buffer`/`frame_codec` 纯软件预研资产，属 P3 前置，非阶段完成）：
 
 ```
 2027-prepare/
@@ -142,7 +142,7 @@ scripts/                build.ps1 · flash.ps1 · verify.ps1 · test_host.ps1
 ## 九、当前状态（如实）
 
 - **P0：COMPLETED**（2026-08-04）——工具链锁定 / 硬件档案 / host 规范（含 Sanitizer）/ 勘误 / 默认调试器 XDS110 / **探针实测证据**（XDS110 ↔ MSPM0G3507 DAP 连通 + 寄存器读取）/ 治理闭环（manifest 81 项 + 校验脚本 + `p0-gate` CI + ADR-001 分支策略，PR #1 合并）。
-- **P1：IN_PROGRESS**（2026-08-29 切 80MHz 基线，等待冷启动×3）——最小工程 `firmware/`（`control.syscfg` **80MHz 正式基线** HFXT+SYSPLL + 唯一 `app/main.c`）；headless 构建 0 编译警告；XDS110 烧录成功；80MHz 板端自动验证 System Reset×3（banner `CPUCLK=80000000 Hz` 每轮一次；≠POR 冷启动）；**SYSPLL_ERR_01 / Flash(80MHz 等待状态) 等 P1 使用功能勘误已全量筛查闭环（HANDLED_BY_SDK，见 `docs/ERRATA_CHECKLIST.md`）**。**32MHz 旧板端结果历史保留、不适用于当前版本**。**待用户冷启动×3 后进入 COMPLETED（以 STATUS 为准）**。
+- **P1：COMPLETED**（2026-09-01）——最小工程 `firmware/`（`control.syscfg` **80MHz 正式基线** HFXT+SYSPLL + 唯一 `app/main.c`）；构建 warning 由工具链强制（compiler `-Werror` + linker `--emit_warnings_as_errors`）+ SysConfig exact-set 白名单；XDS110 烧录/复位冒烟通过；**用户 POR 冷启动×3 通过（2026-09-01）**；P1 使用功能勘误全量筛查闭环（见 `docs/ERRATA_CHECKLIST.md`）。**32MHz 旧板端结果历史保留、不适用于当前版本**。
 - **P1A：COMPLETED**（2026-08-29）——全资源预解算 0 error（TIMG12 可分配 ✓；舵机定时器 TIMG6→TIMA1，决策见 `docs/decisions/ADR-002-servo-timer-tima1.md`）；`docs/RESOURCE_MAP.md` + `docs/PINMAP.md`（DRAFT）已建。
 - **P2 / P3：NOT_STARTED**——尚无 scheduler、`uart1_transport`。
 - **纯软件预研资产（非阶段完成）**：`ring_buffer` + `frame_codec` 已通过 host 测试（`HOST_TESTED`，CRC 向量 `0x78DA`、回绕/恢复/多帧/Sanitizer 全过），但 `release_gate = NOT_MET`（目标端并发 / transport 集成待定），见 `docs/STATUS.md`。**这不等同于 P3 完成。**

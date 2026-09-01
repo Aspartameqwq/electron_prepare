@@ -162,14 +162,14 @@ def main() -> int:
     if res_ok:
         check(True, "舵机定时器 = TIMA1 在 PLAN/RESOURCE_MAP/preflight 三处一致")
 
-    # 10. STATUS 阶段三件套（P1=IN_PROGRESS / P1A=COMPLETED / P2=NOT_STARTED）
-    trio_ok = True
-    trio = {"P1": "IN_PROGRESS", "P1A": "COMPLETED", "P2": "NOT_STARTED"}
-    for phase, expected in trio.items():
+    # 10. STATUS 阶段四件套（P0/P1/P1A=COMPLETED / P2=NOT_STARTED；阶段推进时同步更新）
+    quad_ok = True
+    quad = {"P0": "COMPLETED", "P1": "COMPLETED", "P1A": "COMPLETED", "P2": "NOT_STARTED"}
+    for phase, expected in quad.items():
         if status_map.get(phase) != expected:
-            check(False, f"STATUS {phase} 应为 {expected}（当前 {status_map.get(phase)}）"); trio_ok = False
-    if trio_ok:
-        check(True, "STATUS 三件套 P1=IN_PROGRESS / P1A=COMPLETED / P2=NOT_STARTED")
+            check(False, f"STATUS {phase} 应为 {expected}（当前 {status_map.get(phase)}）"); quad_ok = False
+    if quad_ok:
+        check(True, "STATUS 四件套 P0/P1/P1A=COMPLETED / P2=NOT_STARTED")
 
     return 1 if fails else 0
 
