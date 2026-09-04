@@ -30,7 +30,7 @@
 ## 三、关键工件现状（如实声明，2026-08-29）
 
 **已存在**：CCS 最小工程 `firmware/`（`control.syscfg` 80MHz 基线 + `app/main.c` + projectspec + gate.opt）；P1 板端证据（32MHz 历史；80MHz System Reset×3 + main 复烟 + **用户 POR 冷启动×3 通过 2026-09-01，P1 COMPLETED**）；P1 使用功能勘误全量筛查闭环（见 ERRATA_CHECKLIST）；`docs/RESOURCE_MAP.md` / `PINMAP.md`（DRAFT）/ `docs/decisions/` ADR-001/002。
-**P2 新增**：`board/bsp/{board,timebase,interrupts}`、纯软件 `middleware/scheduler`、`app/app_dispatch.c` 与 `app/tests/test_scheduler.c`；当前工作树未提交，软件验证及自动日志采集完成，用户 LED 与 RESET 观察验收完成。
+**P2 新增**：`board/bsp/{board,timebase,interrupts}`、纯软件 `middleware/scheduler`、`app/app_dispatch.c` 与 `app/tests/test_scheduler.c`；源码与验收记录已归档至 fe94344，软件验证及自动日志采集完成，用户 LED 与 RESET 观察验收完成。
 **仍不存在**：`uart1_transport` 及后续执行器/传感器驱动。
 目录"当前/计划"区分见 `README.md` 第四节；`examples_and_documents/` 为参考库（已入库）。
 
@@ -38,9 +38,9 @@
 
 | 模块 | module_verification | tested_code_commit | evidence_record_commit | 证据与限制 |
 |---|---|---|---|---|
-| scheduler | BOARD_TESTED | N/A（未提交工作树，基于 713aec3） | N/A（本记录未提交） | 真实 C11、10min 逻辑时间仿真/回绕/顺序/取消/边界，ASan/UBSan 通过；10min 板端统计及用户 LED/RESET 观察见 P2 记录 |
-| test_scheduler 应用逻辑 | BOARD_TESTED | N/A（同上） | N/A（同上） | BSP 替身下正常/漏跑失败/冻结重发通过；板端两次 RESULT_PASS 与用户观察见 P2 记录 |
-| timebase / interrupts / board | BOARD_TESTED | N/A（同上） | N/A（同上） | SysConfig 与 CCS 编译链接通过，烧录校验退出 0；10min 日志及用户 LED/RESET 正常口述证据齐备；未测物理时钟精度 |
+| scheduler | BOARD_TESTED | fe94344 | fe94344 | 真实 C11、10min 逻辑时间仿真/回绕/顺序/取消/边界，ASan/UBSan 通过；10min 板端统计及用户 LED/RESET 观察见 P2 记录 |
+| test_scheduler 应用逻辑 | BOARD_TESTED | fe94344 | fe94344 | BSP 替身下正常/漏跑失败/冻结重发通过；板端两次 RESULT_PASS 与用户观察见 P2 记录 |
+| timebase / interrupts / board | BOARD_TESTED | fe94344 | fe94344 | SysConfig 与 CCS 编译链接通过，烧录校验退出 0；10min 日志及用户 LED/RESET 正常口述证据齐备；未测物理时钟精度 |
 
 固件内容已变化，P1 的历史上板结论仅适用于其记录版本，不能转移给当前 P2 镜像。
-新结果以 P2 验证记录的源码摘要及镜像 SHA-256 绑定；提交后另行补证据 metadata，不自引用。
+新结果以 P2 验证记录的源码摘要及镜像 SHA-256 绑定；源码与首次证据记录均归档于 fe94344，metadata 后续独立补录，不自引用。

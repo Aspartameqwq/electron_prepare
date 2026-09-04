@@ -3,9 +3,9 @@
 - 日期：2026-09-04
 - 分支：feat/p2-timebase-scheduler
 - base_commit：713aec3
-- working_tree_dirty：true；保留并接续先前 P2 未提交工作，未创建提交
-- tested_code_commit：N/A（未提交工作树；源码摘要见下）
-- evidence_record_commit：N/A（记录未提交；后续补 metadata 不得自引用）
+- working_tree_dirty：true（测试时）；已归档至 fe943448cd0ec7c958db89fc9ad1615f0598898c
+- tested_code_commit：fe943448cd0ec7c958db89fc9ad1615f0598898c（被测源码归档；摘要见下）
+- evidence_record_commit：fe943448cd0ec7c958db89fc9ad1615f0598898c（首次归档验收记录；本次仅补 metadata）
 - phase_result：COMPLETED
 - user_board_verification：PASS（用户确认 LED 及 RESET 测试无异常；执行器未连接）
 - 硬件目标：天猛星 MSPM0G3507，LQFP-64；80MHz HFXT+SYSPLL；默认 XDS110
