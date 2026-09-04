@@ -58,3 +58,10 @@ TI 内容：
 - 任何从参考例程借鉴的协议/寄存器正确性，均须在本项目接口内**重新实现**，并在本文件登记来源。
 - 原代码要求保留的版权头**不得删除**；要求附带许可全文的放入 `licenses/`。
 - 每次引用新的第三方内容 → 更新本文件 + `REFERENCE_MANIFEST.yml` + `LICENSING_AUDIT.md`。
+
+## P2 实现的接口依据（2026-09-04）
+
+- scheduler、验收 APP、BSP 包装代码按本项目 PLAN 独立实现；未复制参考库或 SDK 示例实现。
+- 硬件接口名称/语义核对 SDK 2.10.00.04 的 source/ti/driverlib/dl_timer.h、dl_uart_main.h、dl_uart.h；中断 IIDX 读清语义核对 [TI TRM SLAU846C §7.2](https://www.ti.com/lit/ug/slau846a/slau846a.pdf)，TIMER 勘误核对本地 SLAZ742H。
+- SysConfig 生成源码、启动代码和 SDK 库由本地工具链参与构建，不拷贝或提交进仓库；相关许可证要求继续见 LICENSING_AUDIT。
+- p2_runtime.opt 为项目自身链接策略，不是第三方链接脚本副本；不含内存区域布局代码。

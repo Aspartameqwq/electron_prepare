@@ -1,4 +1,4 @@
-# scripts/test_host.ps1 — 编译并运行 host 测试（纯算法模块）
+﻿# scripts/test_host.ps1 — 编译并运行 host 测试（纯算法模块）
 # 用法：
 #   powershell -ExecutionPolicy Bypass -File scripts/test_host.ps1            # 常规
 #   powershell -ExecutionPolicy Bypass -File scripts/test_host.ps1 -Sanitize   # 启用 ASan/UBSan
@@ -13,24 +13,28 @@ $Common = @('-std=c11', '-Wall', '-Wextra', '-Werror')
 if ($Sanitize) {
     $Common += @('-fsanitize=address,undefined', '-fno-omit-frame-pointer')
 }
-$Inc    = @('-I', 'firmware/middleware', '-I', 'firmware/config')
+$Inc    = @('-I', 'firmware', '-I', 'firmware/middleware', '-I', 'firmware/config')
 $Src    = @(
     'firmware/middleware/ring_buffer.c',
-    'firmware/middleware/frame_codec.c'
+    'firmware/middleware/frame_codec.c',
+    'firmware/middleware/scheduler.c'
 )
 $OutDir = 'logs/tmp/host'
 New-Item -ItemType Directory -Force -Path $OutDir | Out-Null
 
 $tests = @(
     @{ name = 'test_ring_buffer'; src = 'tests/host/test_ring_buffer.c' },
-    @{ name = 'test_frame_codec'; src = 'tests/host/test_frame_codec.c' }
+    @{ name = 'test_frame_codec'; src = 'tests/host/test_frame_codec.c' },
+    @{ name = 'test_scheduler';   src = 'tests/host/test_scheduler.c' },
+    @{ name = 'test_scheduler_app'; src = 'tests/host/test_scheduler_app.c'; extra = @('firmware/app/tests/test_scheduler.c') }
 )
 
 $failed = $false
 foreach ($t in $tests) {
     $exe  = Join-Path $OutDir ($t.name + '.exe')
     $log  = Join-Path $OutDir ($t.name + '.log')
-    $args = $Common + $Inc + $Src + @($t.src) + @('-o', $exe)
+    $extra = if ($t.ContainsKey('extra')) { $t.extra } else { @() }
+    $args = $Common + $Inc + $Src + $extra + @($t.src) + @('-o', $exe)
 
     ("$CC " + ($args -join ' ')) | Out-File -FilePath $log -Encoding utf8   # 记录编译命令
 

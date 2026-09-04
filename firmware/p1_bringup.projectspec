@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!--
-  P1 最小工程 projectspec（PLAN.md P1：单 main + PB22 LED + UART0 启动日志）
+  P2 工程 projectspec（保留工程标识供 build/flash 脚本使用；单 main + BSP + 调度验收）
   用途：CCS Theia 导入 / ccs-server-cli projectCreate+projectBuild headless 构建。
   说明：
     - 工程就地引用 firmware/ 下源文件（action="link"，不复制），目录即仓库结构；
@@ -24,7 +24,7 @@
     </applicability>
 
     <project
-        title="P1 bringup"
+        title="P2 timebase and scheduler"
         name="firmware_p1_bringup"
         configurations="Debug"
         toolChain="TICLANG"
@@ -34,8 +34,11 @@
         ignoreDefaultCCSSettings="true"
         products="MSPM0-SDK;sysconfig"
         compilerBuildOptions="
+            -I${PROJECT_ROOT}
             -I${PROJECT_ROOT}/app
             -I${PROJECT_ROOT}/config
+            -I${PROJECT_ROOT}/middleware
+            -std=c11
             -I${PROJECT_ROOT}/${ConfigName}/syscfg
             -O2
             @${PROJECT_ROOT}/${ConfigName}/syscfg/device.opt
@@ -51,6 +54,7 @@
             -Wextra
         "
         linkerBuildOptions="
+            -lp2_runtime.opt
             -ldevice.cmd.genlibs
             -L${COM_TI_MSPM0_SDK_INSTALL_DIR}/source
             -L${PROJECT_ROOT}
@@ -63,19 +67,28 @@
             -llibc.a
         "
         sysConfigBuildOptions="
-            --output ${PROJECT_BUILD_DIR}/syscfg
+            --output syscfg
             --product ${COM_TI_MSPM0_SDK_INSTALL_DIR}/.metadata/product.json
             --compiler ticlang
         "
-        description="P1 minimal bringup: PB22 LED heartbeat + UART0 boot banner (single main, no actuators)">
+        description="P2 timebase and portable scheduler acceptance (single main, no actuators)">
         <property name="buildProfile" value="release"/>
         <property name="isHybrid" value="true"/>
 
-        <!-- 应用源码（就地引用） -->
-        <file path="app/main.c" openOnCreation="false" excludeFromBuild="false" action="link"/>
-        <file path="app/app_config.h" openOnCreation="false" excludeFromBuild="false" action="link"/>
+        <!-- 应用源码（就地引用并保留目录，避免同一源码形成根目录别名）。
+             p2_runtime.opt 在生成 linker.cmd 之后加载，覆盖生成默认栈；map 验证实际大小。 -->
+        <file path="app/main.c" targetDirectory="app" openOnCreation="false" excludeFromBuild="false" action="link"/>
+        <file path="app/app_config.h" targetDirectory="app" openOnCreation="false" excludeFromBuild="false" action="link"/>
+        <file path="app/app_dispatch.c" targetDirectory="app" openOnCreation="false" excludeFromBuild="false" action="link"/>
+        <file path="app/tests/test_scheduler.c" targetDirectory="app/tests" openOnCreation="false" excludeFromBuild="false" action="link"/>
+        <file path="board/bsp/board.c" targetDirectory="board/bsp" openOnCreation="false" excludeFromBuild="false" action="link"/>
+        <file path="board/bsp/timebase.c" targetDirectory="board/bsp" openOnCreation="false" excludeFromBuild="false" action="link"/>
+        <file path="board/bsp/interrupts.c" targetDirectory="board/bsp" openOnCreation="false" excludeFromBuild="false" action="link"/>
+        <file path="middleware/scheduler.c" targetDirectory="middleware" openOnCreation="false" excludeFromBuild="false" action="link"/>
 
-        <!-- 预研纯算法（P3 接入 transport 后参与板端构建；当前不编入，保持 P1 最小） -->
+        <!-- 明确排除 P3 预研实现，防 CCS 自动扫描把其计入 P2 验证范围。 -->
+        <file path="middleware/ring_buffer.c" targetDirectory="middleware" excludeFromBuild="true" action="link"/>
+        <file path="middleware/frame_codec.c" targetDirectory="middleware" excludeFromBuild="true" action="link"/>
 
         <!-- 唯一事实源 -->
         <file path="control.syscfg" openOnCreation="true" excludeFromBuild="false" action="link"/>

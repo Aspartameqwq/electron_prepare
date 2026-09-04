@@ -1,6 +1,6 @@
 # MSPM0G3507 电赛控制类模块库实施计划（v7.2，纠偏补丁）
 
-> v7.2 为纠偏补丁（**不改功能范围**）：① 阶段状态增加 `NOT_STARTED / IN_PROGRESS`，当前如实状态见 `docs/STATUS.md`（P0/P1/P1A=COMPLETED、P2/P3=NOT_STARTED；`ring_buffer`/`frame_codec` 仅为提前完成的纯软件预研资产，**非阶段完成**）；② I2C 恢复语义改为"超时即返回错误 + `recovery_pending`，控制器恢复由低优先级 service/SAFE 完成，不计入原事务 API"；③ `mspm0-ccs` skill 降为**可选自动化辅助**，强制规则以仓库内 `AGENTS.md`/`PLAN.md` 为准。真实问题通过代码审查、硬件日志与 ADR 修正。
+> v7.2 为纠偏补丁（**不改功能范围**）：① 阶段状态增加 `NOT_STARTED / IN_PROGRESS`，当前如实状态见 `docs/STATUS.md`（P0/P1/P1A=COMPLETED、P2=COMPLETED、P3=NOT_STARTED；`ring_buffer`/`frame_codec` 仅为提前完成的纯软件预研资产，**非阶段完成**）；② I2C 恢复语义改为"超时即返回错误 + `recovery_pending`，控制器恢复由低优先级 service/SAFE 完成，不计入原事务 API"；③ `mspm0-ccs` skill 降为**可选自动化辅助**，强制规则以仓库内 `AGENTS.md`/`PLAN.md` 为准。真实问题通过代码审查、硬件日志与 ADR 修正。
 
 ## Context（目标 + 开发方式约束）
 
@@ -221,21 +221,29 @@ STBY 必须接 MSPM0 GPIO、**必须外部下拉（建议 10kΩ）**、禁止直
 
 ## 六、调度
 
-- **TIMG12 ISR**：interrupts.c 读 IIDX 确认/清除后调 `tick_on_period_irq()`，其**只做 `g_tick_ms++`**。1ms 是**纯时间基准**，不作为必须每毫秒执行的主循环任务。
+- **TIMG12 ISR**：interrupts.c 读 IIDX 确认/清除后调 `timebase_on_period_irq()`，其**只做 `g_tick_ms++`**。1ms 是**纯时间基准**，不作为必须每毫秒执行的主循环任务。
 - `g_tick_ms` 为 4 字节对齐 `volatile uint32_t`；时间差一律 `(int32_t)(now-due)>=0`；所有周期/超时 < 2^31 ms；禁直接比 `now>deadline`。
 - **主循环单次快照**：
 ```c
-for (;;) { uint32_t now_ms = tick_now_ms(); scheduler_run_once(now_ms); app_run_once(now_ms); }
+for (;;) { uint32_t now_ms = timebase_now_ms(); scheduler_run_once(now_ms); app_run_once(now_ms); }
 ```
 - **调度器接口（含优先级）**：
 ```c
 typedef void (*task_callback_t)(uint32_t now_ms);
 scheduler_status_t scheduler_register(task_id_t id, uint32_t period_ms,
-                                      task_priority_t priority, task_callback_t cb);
+                                      task_priority_t priority, scheduler_task_fn_t cb);
 scheduler_status_t scheduler_enable(task_id_t id, uint32_t now_ms);
 scheduler_status_t scheduler_disable(task_id_t id);
 void scheduler_run_once(uint32_t now_ms);
 ```
+P2 实现补充（2026-09-04）：
+- `scheduler_init()` 可重复调用；`scheduler_get_stats(id, out)` 返回诊断副本，不外泄任务表；同时记录最近/最大迟到量。
+- 回调可 `scheduler_disable()` 自己或尚未执行的任务，立即生效；回调内 init/register/enable 返回 BUSY，递归 run_once 直接返回。
+- 保留 ID=255、空回调、零周期和超过 INT32_MAX 的周期被拒绝；重新启用从 now+period 开始，保留统计。
+- BSP 的 `timebase_init()` 幂等、IRQ 就绪后启动；`timebase_selfcheck_blocking()` 在启动阶段有限忙等约 4ms，至少两个 tick 才通过。
+- P2 UART0 诊断为单消息静态缓冲+每轮最多 16 字节 FIFO 轮询，非阻塞；P3 再实现正式 ISR 环形日志。
+- 10min 测试 APP 经 app_dispatch 选择，结束后停用合成任务并冻结统计，串口每 10s 重发结果。详细验收证据与验证边界见 `docs/verification/P2-timebase-scheduler.md`。
+
 规则：固定数组容量 ≤16、禁动态分配；`period_ms==0` 或 `cb==NULL` 报错；相同 task_id 禁重复注册；未启用任务不参与 lateness 统计；P2 注册合成计数任务，不创建未来模块空回调。
 - **固定优先级顺序（同优先级按 task_id 序）**：
 ```text
@@ -386,7 +394,7 @@ i2c_status_t i2c_write_read_blocking(..., uint32_t timeout_ms);
 
 ## 十二、核心实施阶段（P0~P10）
 
-**阶段结果（v7.2 增补）**：`NOT_STARTED`＝未开始；`IN_PROGRESS`＝进行中；`COMPLETED`＝软件+上板验收完成；`SOFTWARE_READY`＝源码+host+构建完成等待硬件（可进不依赖该硬件输出的软件工作，不得进依赖其真实输出的闭环阶段）；`BLOCKED`＝缺硬件/参数/引脚/工具，只阻塞直接依赖阶段；`FAILED`＝现有条件下未通过，先修复。**当前如实状态：P0=COMPLETED（探针证据+治理闭环，2026-08-04）、P1=COMPLETED（80MHz 基线+勘误闭环+构建门禁，用户 POR 冷启动×3 通过 2026-09-01）、P1A=COMPLETED（全资源预检+DRAFT，2026-08-29）、P2/P3=NOT_STARTED（`ring_buffer`/`frame_codec` 仅为预研资产，release_gate=NOT_MET，见 `docs/STATUS.md`）。**
+**阶段结果（v7.2 增补）**：`NOT_STARTED`＝未开始；`IN_PROGRESS`＝进行中；`COMPLETED`＝软件+上板验收完成；`SOFTWARE_READY`＝源码+host+构建完成等待硬件（可进不依赖该硬件输出的软件工作，不得进依赖其真实输出的闭环阶段）；`BLOCKED`＝缺硬件/参数/引脚/工具，只阻塞直接依赖阶段；`FAILED`＝现有条件下未通过，先修复。**当前如实状态：P0=COMPLETED（探针证据+治理闭环，2026-08-04）、P1=COMPLETED（80MHz 基线+勘误闭环+构建门禁，用户 POR 冷启动×3 通过 2026-09-01）、P1A=COMPLETED（全资源预检+DRAFT，2026-08-29）、P2=COMPLETED、P3=NOT_STARTED（`ring_buffer`/`frame_codec` 仅为预研资产，release_gate=NOT_MET，见 `docs/STATUS.md`）。**
 
 | 阶段 | 内容 | 关键验收（基础必做 / 有仪器选做） |
 |---|---|---|

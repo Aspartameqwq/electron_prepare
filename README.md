@@ -40,7 +40,7 @@
 
 ## 四、目录结构
 
-当前（P0=COMPLETED、**P1=COMPLETED**（2026-09-01 用户 POR 冷启动×3）、P1A=COMPLETED；已含 `ring_buffer`/`frame_codec` 纯软件预研资产，属 P3 前置，非阶段完成）：
+当前（P0=COMPLETED、**P1=COMPLETED**（2026-09-01 用户 POR 冷启动×3）、P1A=COMPLETED、P2=COMPLETED；已含 `ring_buffer`/`frame_codec` 纯软件预研资产，属 P3 前置，非阶段完成）：
 
 ```
 2027-prepare/
@@ -62,8 +62,8 @@
 │   ├── verification/          # 阶段上板验证记录（P1-bringup 等）
 │   ├── example_reviews/       # 例程评审（可取/不足/借鉴）
 │   └── reference/             # 参考来源清单 + 许可审计
-├── firmware/          # 可编译 CCS 工程：control.syscfg（80MHz 基线）+ app/main.c + projectspec + config
-├── tests/host/        # ring/frame_codec host 测试（预研资产）
+├── firmware/          # P2：80MHz + TIMG12、BSP、scheduler、应用分发、10min 验收 APP
+├── tests/host/        # ring/frame_codec 预研测试 + scheduler/验收 APP 测试
 ├── scripts/           # build.ps1 · flash.ps1 · check_doc_consistency.py · check_markdown_links.py · test_host.ps1
 └── examples_and_documents/    # 参考例程与资料库（已入库；构建产物/缓存已排除）
 ```
@@ -74,7 +74,9 @@
 firmware/               # 唯一 CCS 工程
   control.syscfg        外设配置唯一机器事实源
   app/                  main.c(唯一入口) · app_dispatch.c · tests/
-  board/                bsp/ · drivers/ · middleware/ · control/ · estimation/ · safety/
+  board/bsp/            MCU 平台接口（当前已实现）
+  middleware/           scheduler · ring_buffer · frame_codec（当前已存在）
+  drivers/ · control/ · estimation/ · safety/  按后续阶段逐步建立
   config/               hardware_config.h · project_config.h · config_validate.h
 docs/                   HARDWARE_PROFILE.md · RESOURCE_MAP.md · PINMAP.md
                         PROTOCOL.md · SAFETY.md · TUNING_LOG.md · TOOLCHAIN_LOCK.md
@@ -144,7 +146,8 @@ scripts/                build.ps1 · flash.ps1 · verify.ps1 · test_host.ps1
 - **P0：COMPLETED**（2026-08-04）——工具链锁定 / 硬件档案 / host 规范（含 Sanitizer）/ 勘误 / 默认调试器 XDS110 / **探针实测证据**（XDS110 ↔ MSPM0G3507 DAP 连通 + 寄存器读取）/ 治理闭环（manifest 81 项 + 校验脚本 + `p0-gate` CI + ADR-001 分支策略，PR #1 合并）。
 - **P1：COMPLETED**（2026-09-01）——最小工程 `firmware/`（`control.syscfg` **80MHz 正式基线** HFXT+SYSPLL + 唯一 `app/main.c`）；构建 warning 由工具链强制（compiler `-Werror` + linker `--emit_warnings_as_errors`）+ SysConfig exact-set 白名单；XDS110 烧录/复位冒烟通过；**用户 POR 冷启动×3 通过（2026-09-01）**；P1 使用功能勘误全量筛查闭环（见 `docs/ERRATA_CHECKLIST.md`）。**32MHz 旧板端结果历史保留、不适用于当前版本**。
 - **P1A：COMPLETED**（2026-08-29）——全资源预解算 0 error（TIMG12 可分配 ✓；舵机定时器 TIMG6→TIMA1，决策见 `docs/decisions/ADR-002-servo-timer-tima1.md`）；`docs/RESOURCE_MAP.md` + `docs/PINMAP.md`（DRAFT）已建。
-- **P2 / P3：NOT_STARTED**——尚无 scheduler、`uart1_transport`。
+- **P2=COMPLETED**（2026-09-04）：tick/scheduler/测试 APP 已接入，host 与 CCS 构建通过；已采集板端 10min 日志，计数符合预期，用户已确认 LED 持续 1Hz、无异常及 RESET 测试正常，舵机/电机未连接；见 [P2 验证记录](docs/verification/P2-timebase-scheduler.md)。
+- **P3=NOT_STARTED**：尚无 `uart1_transport`；ring/frame 仍是预研资产。
 - **纯软件预研资产（非阶段完成）**：`ring_buffer` + `frame_codec` 已通过 host 测试（`HOST_TESTED`，CRC 向量 `0x78DA`、回绕/恢复/多帧/Sanitizer 全过），但 `release_gate = NOT_MET`（目标端并发 / transport 集成待定），见 `docs/STATUS.md`。**这不等同于 P3 完成。**
 - 调试器决策（官方文档确认）：天猛星**无板载调试器**，**默认调试器 = 外部 XDS110**（SWD: PA19=SWDIO / PA20=SWCLK），J-Link 备用；禁 ST-LINK。
 - 目录"当前/计划"区分见第四节；`firmware/` 为**已可编译的 CCS 工程**（80MHz 基线，headless 构建/烧录脚本齐备）。

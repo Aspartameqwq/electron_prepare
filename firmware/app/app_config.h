@@ -1,30 +1,23 @@
 /**
  * @file app_config.h
- * @brief 当前构建选择（PLAN.md §一：app_config.h 只管"当前 APP_ID / 链路类型 / 测试开关"）
- *
- * P1 只有单一 bringup 程序，暂无测试分发（app_dispatch 属 P2+）；APP_ID 预留枚举占位，
- * 非法值编译期报错（禁默认回退）。
+ * @brief 当前 APP 构建选择；ID 使用数字宏供预处理器检查，非法值直接编译失败。
+ * @details P2 选择 scheduler 验收；P1 LED 应用通过同一分发器保留。
  */
 #ifndef APP_CONFIG_H_
 #define APP_CONFIG_H_
-
-/** 应用程序标识：P1 仅 LED_BRINGUP 一个（后续阶段按 PLAN 增补）。 */
-typedef enum {
-    APP_ID_LED_BRINGUP = 1,   /* P1：PB22 LED 心跳 + UART0 启动日志 */
-} app_id_t;
-
-/** 当前选择的 APP（编译期固定；非法值在 config 校验处报错） */
-#define APP_SELECTED_ID   APP_ID_LED_BRINGUP
-
-#if APP_SELECTED_ID != APP_ID_LED_BRINGUP
-#error "app_config.h: APP_SELECTED_ID 不是合法的 app_id_t 值"
+#include <stdint.h>
+typedef uint8_t app_id_t;
+/** DESIGN_DEFAULT：构建 ID，无单位。 */
+#define APP_ID_LED_BRINGUP 1u
+#define APP_ID_SCHEDULER_TEST 2u
+#ifndef APP_SELECTED_ID
+#define APP_SELECTED_ID APP_ID_SCHEDULER_TEST
 #endif
-
-/** UART1 链路类型（P3 起使用；P1 预留，保持显式而非缺省） */
+#if APP_SELECTED_ID != APP_ID_LED_BRINGUP && APP_SELECTED_ID != APP_ID_SCHEDULER_TEST
+#error "APP_SELECTED_ID is invalid"
+#endif
+/** UART1 链路枚举；P3 才选择实际链路，当前不启用外设。 */
 typedef enum {
-    UART1_LINK_LOOPBACK = 0,   /* 板内 TX/RX 短接回环（115200） */
-    UART1_LINK_K230_DIRECT,    /* K230 直连（两端共同配置波特率） */
-    UART1_LINK_HC04_BRIDGE,    /* HC-04 桥接（须读真实波特率，不得假定） */
+    UART1_LINK_LOOPBACK = 0, UART1_LINK_K230_DIRECT, UART1_LINK_HC04_BRIDGE
 } uart1_link_t;
-
-#endif /* APP_CONFIG_H_ */
+#endif

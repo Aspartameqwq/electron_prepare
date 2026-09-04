@@ -50,7 +50,10 @@
 
 | 勘误号 | 涉及阶段 | 当前状态 | 检查日期 | 依据 / 备注 |
 |---|---|---|---|---|
-| TIMER_ERR_01/04/06/07 | P2 起 | **NOT_RELEVANT**（P1 未用定时器） | 2026-08-29 | P2 启用 TIMG12 时按 SLAZ742H 对应条目核对 |
+| TIMER_ERR_01 | P2 | **NOT_RELEVANT** | 2026-09-04 | SLAZ742H pp.33–34：捕获模式硬件 ZCOND/LCOND 启动问题；P2 周期计数、无捕获，软件显式启动 |
+| TIMER_ERR_04 | P2 | **NOT_RELEVANT** | 2026-09-04 | 单次模式零事件附近重新使能问题；P2 PERIODIC 持续运行，init 幂等、不反复重新启动 |
+| TIMER_ERR_06 | P2 | **NOT_RELEVANT** | 2026-09-04 | CLKEN=0 不能停计数；P2 不靠关闭 CLKEN 停定时器，结束验收只停用软件任务，硬件 tick 持续运行 |
+| TIMER_ERR_07 | P2 | **NOT_RELEVANT** | 2026-09-04 | repeat counter 首次周期数问题；P2 未使用 repeat counter |
 | **I2C_ERR_13** | P8(I2C) | **APPLICATION_WORKAROUND_REQUIRED** | 2026-08-04→2026-08-29 复核 | SLAZ742H 确认：BURSTRUN 置位后约 3 个 I2C 功能时钟 BUSY 才置位，立即轮询可能误判完成（高 CLKDIV/高优化更易发）。官方 workaround＝启动后延时再轮询。SDK 2.10 i2c controller 示例含该处理（`i2c_controller_rw_multibyte_fifo_poll.c`），本项目 `i2c_bus.c` **尚未实现**；P8 实现并板端验证后改 `VERIFIED` |
 | WWDT_ERR_01/02 | E4 | NOT_RELEVANT | 2026-08-29 | WWDT 未启用（E4 才启用） |
 | ADC/COMP/DAC/DMA/SPI/CRCP/MATHACL/VREF/PMCU/PWREN/RTC 系 | P4/P8/E 各阶段 | NOT_RELEVANT | 2026-08-29 | P1 未使用；对应阶段纳入时按 SLAZ742H 核对 |
@@ -75,3 +78,10 @@
 - 编译 + 链接 warning 必须 0；SysConfig error 必须 0；SysConfig warning 白名单**精确集合匹配**（HFXT hfxInPin=1 + hfxOutPin=1，缺失/重复/新增/summary 不可解析均 BUILD FAILED），禁止写"已知可忽略"。
 - 每个阶段开始时：按"只查当前用到的功能"更新本表（依据 SLAZ742H）；状态列只允许 4 个合法值（`NOT_RELEVANT`/`HANDLED_BY_SDK`/`APPLICATION_WORKAROUND_REQUIRED`/`VERIFIED`），非勘误信息与编号澄清放对应小节，不占状态表。
 - v1 明确**不进入** STOP/STANDBY/SHUTDOWN 低功耗模式（避免引入额外恢复问题）。
+## P2 生成代码复核（2026-09-04）
+
+- TIMER：BUSCLK 80MHz、divide=1、prescale=0、LOAD=79999、PERIODIC、ZERO 中断、startTimer=STOP；BSP 在 IRQ 启用后显式 startCounter。
+- GPIO_init 仍在 SYSCTL_init 前执行，80MHz 后新增的 timer 初始化不访问 IOMUX；IOMUX_ERR_02 继续沿用 P1 的 HANDLED_BY_SDK 依据。
+- Flash wait-state=2 在 SYSPLL/MCLK 切换前；SYSPLL FCC 检查及失败重锁仍由生成代码提供；未新增低功耗、ICACHE 配置或 DMA。
+- CPU_INT.IIDX 在 ISR 读即清最高优先级事件，hook 不重复清中断，依据 [TI TRM SLAU846C §7.2](https://www.ti.com/lit/ug/slau846a/slau846a.pdf)。
+- 正式 CCS 构建 warning exact-set 仍为 HFXT 两条；未增加豁免。上述是源码/生成物核对，不是板端验收。

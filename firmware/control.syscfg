@@ -1,13 +1,13 @@
 /**
  * control.syscfg — 外设配置唯一机器事实源（PLAN.md §一）
  *
- * P1 bringup（feat 分支 chore/p1-closeout-80mhz）：
+ * P2 时间基准（保留 P1 的正式时钟和板级引脚）：
  *   - **正式时钟基线 80MHz**（HFXT 40MHz + SYSPLL，TI 官方路径；PB22/UART0/SWD 功能不变）
  *   - PB22 板载 LED（GPIO 输出，初始低 = 熄灭）
  *   - UART0 @ PA10/PA11（板载 CH340 → PC 串口，SERIAL_PORT 由 scripts/env.local.ps1 指定，115200 8N1）——文本调试日志
  *   - DEBUGSS（SWD: PA19/PA20，XDS110 调试）
  *
- * P1 无 PWM/TIMG/I2C/UART1——按"目录按阶段创建、外设按阶段加入"原则，后续阶段再加。
+ *   - TIMG12：1ms ZERO 中断，BSP 显式启动；无 PWM/I2C/UART1。
  * 禁改生成文件（firmware/Debug/syscfg/*）；改这里之后重新生成。
  *
  * @cliArgs --device "MSPM0G3507" --package "LQFP-64(PM)" --product "mspm0_sdk@2.10.00.04"
@@ -71,6 +71,18 @@ UART0.txPinConfig.internalResistor = "PULL_UP";
 UART0.rxPinConfig.$name            = "ti_driverlib_gpio_debug_rx";
 UART0.rxPinConfig.enableConfig     = true;
 UART0.rxPinConfig.internalResistor = "PULL_UP";
+
+/* ---- P2：TIMG12 = 1ms 系统节拍（时间基准；PLAN.md §三/§六）----
+ * 集中式 ISR（bsp/interrupts.c）只做 tick++；BUSCLK 80MHz / 80000 = 1kHz。
+ * timerStartTimer=false：初始化后不自动启动，由 timebase BSP 在 IRQ 就绪后显式启动。 */
+const TIMER = scripting.addModule("/ti/driverlib/TIMER", {}, false);
+const TICK = TIMER.addInstance();
+TICK.$name          = "SYS_TICK";
+TICK.timerMode      = "PERIODIC";
+TICK.timerPeriod    = "1 ms";
+TICK.peripheral.$assign = "TIMG12";
+TICK.interrupts     = ["ZERO"];
+TICK.timerStartTimer = false;
 
 /* SWD 调试口（XDS110；FIXED_BOARD_FUNCTION）
  * 注意：80MHz 时钟树模式下 SYSCTL.peripheral 为 undefined（skill 实测笔记），

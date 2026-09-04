@@ -30,3 +30,9 @@
 
 - `scripts/test_host.ps1`：**已建立**，ring_buffer / frame_codec host 测试已通过（预研资产，`HOST_TESTED`）。注意 `release_gate = NOT_MET`，已知缺口（时间戳回绕、Sanitizer、空指针/超时校验、`*out_len` 清零、目标端并发）见 `docs/STATUS.md`。
 - 可选：P3 host 测试稳定后加 `.github/workflows/host-tests.yml`（只跑纯算法，不构建 CCS/不烧录）。
+
+## P2 测试范围（2026-09-04）
+
+- `test_scheduler.c`：保留 ID/零周期/最大周期/空回调/满表；真实优先级和同级 ID 顺序；同轮时间快照；漏跑不补算；取消本轮任务；重入/回调期间修改保护；600000ms 仿真跨 UINT32_MAX。
+- `test_scheduler_app.c`：编译真实验收 APP，只替换 BSP 发送和 LED；验证正常 RESULT_PASS、故意漏跑 RESULT_FAIL、结束后停任务与冻结重发。
+- 执行 `powershell -ExecutionPolicy Bypass -File scripts/test_host.ps1` 及 `-Sanitize`；两者均须退出 0。逻辑时间仿真不代表真实 TIMG12 精度或板端 10min 通过。

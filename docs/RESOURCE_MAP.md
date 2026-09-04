@@ -16,7 +16,7 @@
 | DEBUGSS | SWD PA19/PA20 | XDS110 调试 | **已实施** |
 | GPIO LED | PB22 | 心跳灯 | **已实施** |
 | UART0 | PA10/PA11 | CH340 调试日志 | **已实施** |
-| TIMG12 | 1ms tick | 时间基准（P2） | DRAFT（预检可分配 ✓） |
+| TIMG12 | 1ms tick | 时间基准（P2） | **已实施，基础板端验收完成**；BUSCLK 80MHz / 80000，LOAD=79999，ZERO，显式启动 |
 | UART1 | PB6(TX)/PB7(RX) | K230/HC-04 协议（P3） | DRAFT（板级固定，PINMAP 注明 TX/RX） |
 | TIMA0 | 双电机 PWM 20kHz | P4 | DRAFT（CCP0=PA8, CCP1=PB9） |
 | GPIO ×5 | TB6612 方向+STBY | P4 | DRAFT（PA12, PB13-16；STBY 须外部下拉） |
